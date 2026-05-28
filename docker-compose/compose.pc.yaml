@@ -1,31 +1,32 @@
-# Quick Start
-# $ xhost local:root
-# $ docker compose -f compose.pc.yaml up
-
-version: "2.3"
-
 services:
 
-#ROS Galactic
   mappers:
     image: mappers
     build: ../mapper-packages
+    network_mode: host
+    ipc: host
     restart: unless-stopped
     tty: true
-    volumes: 
+    volumes:
       - ~/map:/map
       - ~/heatmaps:/heatmaps
       - /tmp/.X11-unix:/tmp/.X11-unix:rw
     environment:
       - DISPLAY
       - LIBGL_ALWAYS_SOFTWARE=1
+      - RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
+      - ROS_DOMAIN_ID=0
 
   rviz:
     image: husarion/rviz2:humble
+    network_mode: host
+    ipc: host
     restart: on-failure
-    volumes: 
+    volumes:
       - /tmp/.X11-unix:/tmp/.X11-unix:rw
       - ./config/rosbot_pro_mapping.rviz:/root/.rviz2/default.rviz
     environment:
       - DISPLAY
       - LIBGL_ALWAYS_SOFTWARE=1
+      - RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
+      - ROS_DOMAIN_ID=0
