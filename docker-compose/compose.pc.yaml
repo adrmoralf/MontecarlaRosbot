@@ -13,8 +13,8 @@ services:
     restart: unless-stopped
     tty: true
     volumes: 
-      - /~/map:/map
-      - /~/heatmaps:/heatmaps
+      - ~/map:/map
+      - ~/heatmaps:/heatmaps
       - /tmp/.X11-unix:/tmp/.X11-unix:rw
     environment:
       - DISPLAY
