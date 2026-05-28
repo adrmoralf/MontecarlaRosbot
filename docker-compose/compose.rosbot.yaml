@@ -1,49 +1,62 @@
-# Quick Start
-# $ docker compose -f compose.rosbot.yaml up
-
 services:
-
-  rplidar:
-    image: husarion/rplidar:galactic
-    restart: unless-stopped
-    devices:
-      - /dev/ttyUSB0
-    command: >
-      ros2 launch
-      sllidar_ros2 sllidar_launch.py
-      serial_port:=/dev/ttyUSB0
-      serial_baudrate:=115200
-
-  nav2:
-    image: nav2-wifi-heatmap
-    build: ../nav2-wifi-heatmap
-    restart: unless-stopped
-    volumes:
-      - ~/net_expose:/net_expose
-    command: >
-      ros2 launch
-      nav2_bringup navigation_launch.py
-      params_file:=/ros2_ws/config/nav2_params.yaml
-
-  slam-toolbox:
-    image: husarion/slam-toolbox:galactic
-    restart: unless-stopped
-    container_name: slam-toolbox
-    volumes:
-      - ./config/slam_params.yaml:/slam_params.yaml
-      - ./maps:/maps
-    command: >
-      ros2 launch
-      slam_toolbox online_sync_launch.py
-        slam_params_file:=/slam_params.yaml
 
   rosbot:
     image: husarion/rosbot:humble-0.13.1-20240201
+    network_mode: host
+    ipc: host
     restart: unless-stopped
     devices:
       - /dev/ttyAMA0
+    environment:
+      - RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
+      - ROS_DOMAIN_ID=0
     command: >
       ros2 launch rosbot_bringup combined.launch.py
         mecanum:=False
         serial_port:=/dev/ttyAMA0
         serial_baudrate:=576000
+
+  rplidar:
+    image: husarion/rplidar:humble
+    network_mode: host
+    ipc: host
+    restart: unless-stopped
+    devices:
+      - /dev/ttyUSB0
+    environment:
+      - RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
+      - ROS_DOMAIN_ID=0
+    command: >
+      ros2 launch sllidar_ros2 sllidar_launch.py
+        serial_port:=/dev/ttyUSB0
+        serial_baudrate:=115200
+
+  slam-toolbox:
+    image: husarion/slam-toolbox:humble
+    network_mode: host
+    ipc: host
+    restart: unless-stopped
+    volumes:
+      - ./config/slam_params.yaml:/slam_params.yaml
+      - ./maps:/maps
+    environment:
+      - RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
+      - ROS_DOMAIN_ID=0
+    command: >
+      ros2 launch slam_toolbox online_sync_launch.py
+        slam_params_file:=/slam_params.yaml
+
+  nav2:
+    image: nav2-wifi-heatmap
+    build: ../nav2-wifi-heatmap
+    network_mode: host
+    ipc: host
+    restart: unless-stopped
+    volumes:
+      - ~/net_expose:/net_expose
+    environment:
+      - RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
+      - ROS_DOMAIN_ID=0
+    command: >
+      ros2 launch nav2_bringup navigation_launch.py
+        params_file:=/ros2_ws/config/nav2_params.yaml
