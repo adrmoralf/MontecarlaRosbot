@@ -1,20 +1,16 @@
 # Quick Start
 # $ docker compose -f compose.rosbot.yaml up
 
-version: "2.3"
-
 services:
 
-# ROS 2 Galactic
-
   rplidar:
-    image: husarion/rplidar:galactic
+    image: husarion/rplidar:humble
     restart: unless-stopped
     devices:
       - /dev/ttyUSB0
     command: >
-      ros2 launch 
-      rplidar_ros2 rplidar_launch.py
+      ros2 launch
+      rplidar_ros rplidar_a2m8_launch.py
 
   nav2:
     image: nav2-wifi-heatmap
@@ -23,48 +19,26 @@ services:
     volumes:
       - ~/net_expose:/net_expose
     command: >
-      ros2 launch 
-      nav2_bringup navigation_launch.py 
+      ros2 launch
+      nav2_bringup navigation_launch.py
       params_file:=/ros2_ws/config/nav2_params.yaml
 
-
   slam-toolbox:
-    image: husarion/slam-toolbox:galactic 
+    image: husarion/slam-toolbox:humble
     restart: unless-stopped
     container_name: slam-toolbox
-    volumes: 
+    volumes:
       - ./config/slam_params.yaml:/slam_params.yaml
       - ./maps:/maps
     command: >
-      ros2 launch 
-      slam_toolbox online_sync_launch.py 
+      ros2 launch
+      slam_toolbox online_sync_launch.py
         slam_params_file:=/slam_params.yaml
 
-  bridge:
-    image: husarion/ros:galactic-ros1-bridge
-    restart: unless-stopped
-    environment:
-      - ROS_MASTER_URI=http://ros-master:11311
-    command: >
-      ros2 run 
-      ros1_bridge dynamic_bridge
-
-  ros-master:
-    image: ros:noetic-ros-core
-    restart: unless-stopped
-    command: stdbuf -o L roscore
-
   rosbot:
-    image: husarion/rosbot:noetic
+    image: husarion/rosbot2r:humble
     restart: unless-stopped
     devices:
-      - ${SERIAL_PORT} 
+      - ${SERIAL_PORT}
     environment:
-      - SERIAL_PORT  
-      - ROS_MASTER_URI=http://ros-master:11311
-    command: >
-      roslaunch --wait 
-      rosbot_bringup rosbot_docker.launch
-
-
-  
+      - SERIAL_PORT

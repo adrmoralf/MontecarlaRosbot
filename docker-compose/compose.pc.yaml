@@ -21,7 +21,7 @@ services:
       - LIBGL_ALWAYS_SOFTWARE=1
 
   rviz:
-    image: husarion/rviz2:galactic
+    image: husarion/rviz2:humble
     restart: on-failure
     volumes: 
       - /tmp/.X11-unix:/tmp/.X11-unix:rw

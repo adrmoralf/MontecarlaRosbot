@@ -1,0 +1,10 @@
+services:
+  mappers:
+    network_mode: host
+    environment:
+      - ROS_DOMAIN_ID=0
+
+  rviz:
+    network_mode: host
+    environment:
+      - ROS_DOMAIN_ID=0
