@@ -8,6 +8,7 @@ COPY . .
 
 RUN apt-get update && apt-get install -y \
         python3-colcon-common-extensions \
+        ros-humble-nav2-common \
         ros-humble-nav2-core \
         ros-humble-nav2-util \
         ros-humble-nav2-bringup \
