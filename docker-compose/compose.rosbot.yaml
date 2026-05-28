@@ -8,7 +8,6 @@ services:
     devices:
       - /dev/ttyAMA0
     environment:
-      - RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
       - ROS_DOMAIN_ID=0
     command: >
       ros2 launch rosbot_bringup combined.launch.py
@@ -24,7 +23,6 @@ services:
     devices:
       - /dev/ttyUSB0
     environment:
-      - RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
       - ROS_DOMAIN_ID=0
     command: >
       ros2 launch sllidar_ros2 sllidar_launch.py
@@ -40,7 +38,6 @@ services:
       - ./config/slam_params.yaml:/slam_params.yaml
       - ./maps:/maps
     environment:
-      - RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
       - ROS_DOMAIN_ID=0
     command: >
       ros2 launch slam_toolbox online_sync_launch.py
@@ -55,7 +52,6 @@ services:
     volumes:
       - ~/net_expose:/net_expose
     environment:
-      - RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
       - ROS_DOMAIN_ID=0
     command: >
       ros2 launch nav2_bringup navigation_launch.py
