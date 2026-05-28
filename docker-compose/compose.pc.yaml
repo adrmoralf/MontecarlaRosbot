@@ -14,7 +14,6 @@ services:
     environment:
       - DISPLAY
       - LIBGL_ALWAYS_SOFTWARE=1
-      - RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
       - ROS_DOMAIN_ID=0
 
   rviz:
@@ -28,5 +27,4 @@ services:
     environment:
       - DISPLAY
       - LIBGL_ALWAYS_SOFTWARE=1
-      - RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
       - ROS_DOMAIN_ID=0
