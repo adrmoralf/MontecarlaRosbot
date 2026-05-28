@@ -11,6 +11,8 @@ services:
     command: >
       ros2 launch
       sllidar_ros2 sllidar_launch.py
+      serial_port:=/dev/ttyUSB0
+      serial_baudrate:=115200
 
   nav2:
     image: nav2-wifi-heatmap
@@ -39,6 +41,9 @@ services:
     image: husarion/rosbot:humble-0.13.1-20240201
     restart: unless-stopped
     devices:
-      - ${SERIAL_PORT}
-    environment:
-      - SERIAL_PORT
+      - /dev/ttyAMA0
+    command: >
+      ros2 launch rosbot_bringup combined.launch.py
+        mecanum:=False
+        serial_port:=/dev/ttyAMA0
+        serial_baudrate:=576000
