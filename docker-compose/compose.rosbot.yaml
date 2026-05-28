@@ -4,13 +4,13 @@
 services:
 
   rplidar:
-    image: husarion/rplidar:humble
+    image: husarion/rplidar:galactic
     restart: unless-stopped
     devices:
       - /dev/ttyUSB0
     command: >
       ros2 launch
-      rplidar_ros rplidar_a2m8_launch.py
+      rplidar_ros2 rplidar_launch.py
 
   nav2:
     image: nav2-wifi-heatmap
@@ -24,7 +24,7 @@ services:
       params_file:=/ros2_ws/config/nav2_params.yaml
 
   slam-toolbox:
-    image: husarion/slam-toolbox:humble
+    image: husarion/slam-toolbox:galactic
     restart: unless-stopped
     container_name: slam-toolbox
     volumes:
@@ -36,7 +36,7 @@ services:
         slam_params_file:=/slam_params.yaml
 
   rosbot:
-    image: husarion/rosbot2r:humble
+    image: husarion/rosbot:humble-0.13.1-20240201
     restart: unless-stopped
     devices:
       - ${SERIAL_PORT}
