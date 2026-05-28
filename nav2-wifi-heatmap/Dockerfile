@@ -1,4 +1,4 @@
-FROM husarion/nav2:humble
+FROM ros:humble
 
 SHELL ["/bin/bash", "-c"]
 
@@ -7,13 +7,20 @@ WORKDIR /ros2_ws
 COPY . .
 
 RUN apt-get update && apt-get install -y \
-        python3-pip \
-        python3-colcon-common-extensions && \
+        python3-colcon-common-extensions \
+        ros-humble-nav2-core \
+        ros-humble-nav2-util \
+        ros-humble-nav2-bringup \
+        ros-humble-nav2-waypoint-follower \
+        ros-humble-pluginlib \
+        ros-humble-rclcpp \
+        ros-humble-rclcpp-action \
+        ros-humble-rclcpp-lifecycle \
+        ros-humble-rmw-fastrtps-cpp && \
     apt-get upgrade -y && \
-    source /opt/ros/$ROS_DISTRO/setup.bash && \
+    source /opt/ros/humble/setup.bash && \
     colcon build --symlink-install && \
     apt-get remove -y --purge \
-        python3-pip \
         python3-colcon-common-extensions && \
     apt-get autoremove -y && \
     apt-get clean && \
