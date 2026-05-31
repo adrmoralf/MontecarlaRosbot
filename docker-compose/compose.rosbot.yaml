@@ -9,6 +9,8 @@ services:
       - /dev/ttyAMA0
     environment:
       - ROS_DOMAIN_ID=0
+      - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
+      - DDS_CONFIG=DEFAULT
     command: >
       ros2 launch rosbot_bringup combined.launch.py
         mecanum:=False
@@ -24,6 +26,8 @@ services:
       - /dev/ttyUSB0
     environment:
       - ROS_DOMAIN_ID=0
+      - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
+      - DDS_CONFIG=DEFAULT
     command: >
       ros2 launch sllidar_ros2 sllidar_launch.py
         serial_port:=/dev/ttyUSB0
@@ -39,6 +43,8 @@ services:
       - ./maps:/maps
     environment:
       - ROS_DOMAIN_ID=0
+      - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
+      - DDS_CONFIG=DEFAULT
     command: >
       ros2 launch slam_toolbox online_sync_launch.py
         slam_params_file:=/slam_params.yaml
@@ -53,6 +59,8 @@ services:
       - ~/net_expose:/net_expose
     environment:
       - ROS_DOMAIN_ID=0
+      - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
+      - DDS_CONFIG=DEFAULT
     command: >
       ros2 launch nav2_bringup navigation_launch.py
         params_file:=/ros2_ws/config/nav2_params.yaml
