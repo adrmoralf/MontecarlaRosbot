@@ -31,7 +31,7 @@ services:
     command: >
       ros2 launch sllidar_ros2 sllidar_launch.py
         serial_port:=/dev/ttyUSB0
-        serial_baudrate:=115200
+        serial_baudrate:=256000
 
   slam-toolbox:
     image: husarion/slam-toolbox:humble
