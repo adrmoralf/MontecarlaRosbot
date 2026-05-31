@@ -1,3 +1,4 @@
 .env
 sample-images
-memoria_tecnica_montecarla.md
+*.md
+!README.md
