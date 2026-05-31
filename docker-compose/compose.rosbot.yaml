@@ -15,7 +15,7 @@ services:
       ros2 launch rosbot_bringup combined.launch.py
         mecanum:=False
         serial_port:=/dev/ttyAMA0
-        serial_baudrate:=576000
+        serial_baudrate:=230400
 
   rplidar:
     image: husarion/rplidar:humble
