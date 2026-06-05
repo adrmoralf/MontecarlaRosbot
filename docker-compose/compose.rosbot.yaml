@@ -40,7 +40,7 @@ services:
     restart: unless-stopped
     depends_on:
       rosbot:
-        condition: service_healthy
+        condition: service_started
     volumes:
       - ./config/slam_params.yaml:/slam_params.yaml
       - ./maps:/maps
@@ -49,7 +49,7 @@ services:
       - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
       - DDS_CONFIG=DEFAULT
     command: >
-      bash -c "sleep 10 &&
+      bash -c "sleep 30 &&
       ros2 launch slam_toolbox online_sync_launch.py
         slam_params_file:=/slam_params.yaml"
 
