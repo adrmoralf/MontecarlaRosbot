@@ -38,6 +38,9 @@ services:
     network_mode: host
     ipc: host
     restart: unless-stopped
+    depends_on:
+      rosbot:
+        condition: service_healthy
     volumes:
       - ./config/slam_params.yaml:/slam_params.yaml
       - ./maps:/maps
