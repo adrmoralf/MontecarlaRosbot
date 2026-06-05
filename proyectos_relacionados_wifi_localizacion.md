@@ -269,7 +269,9 @@ La localización interior basada en RSSI WiFi es un campo activo tanto en la com
 
 ## CATEGORÍA 4: Cómo Eliminar Husarnet (Comunicación ROS 2 en LAN)
 
-La dependencia de Husarnet en el proyecto original de Husarion es **completamente eliminable** cuando robot y PC están en la misma red LAN. La referencia directa es el repositorio oficial de Husarion de navegación:
+> **Prerequisito verificado (2026-06-04):** el PC debe correr **Ubuntu 22.04 nativo**. WSL2 crea una interfaz virtual con IP `172.x.x.x` distinta a la IP real del host Windows en la LAN. El ROSbot ve la IP de Windows, pero ROS 2 corre en la IP de WSL2 — el DDS no puede establecer sesión. Solución adoptada en el TFG: dual boot Ubuntu 22.04 nativo.
+
+La dependencia de Husarnet en el proyecto original de Husarion es **completamente eliminable** cuando robot y PC están en la misma red LAN (con Ubuntu nativo en el PC). La referencia directa es el repositorio oficial de Husarion de navegación:
 
 **`rosbot-navigation`:** https://github.com/husarion/rosbot-navigation  
 El fichero `.env` contiene:
