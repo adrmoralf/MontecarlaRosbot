@@ -1,2 +1,4 @@
 .env
 sample-images
+*.md
+!README.md
