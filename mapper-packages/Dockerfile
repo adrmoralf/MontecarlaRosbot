@@ -19,7 +19,7 @@ RUN apt-get update && apt-get install -y \
         python3-opencv \
         ros-$ROS_DISTRO-nav2-map-server \
         ros-$ROS_DISTRO-rmw-fastrtps-cpp && \
-    pip install --upgrade scipy && \
+    pip install --upgrade "scipy" "numpy<2" && \
     apt-get upgrade -y && \
     source /opt/ros/$ROS_DISTRO/setup.bash && \
     colcon build --symlink-install && \
