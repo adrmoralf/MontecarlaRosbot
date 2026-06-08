@@ -6,6 +6,7 @@ from nav2_msgs.action import FollowWaypoints
 from geometry_msgs.msg import PoseStamped
 from std_msgs.msg import Empty
 #Utils
+import os
 import tkinter
 import matplotlib.pyplot as plt
 import cv2
@@ -40,7 +41,8 @@ class FollowWaypointsClient(Node):
             data = yaml.safe_load(file)
         self.origin = Waypoint(data['origin'][0],data['origin'][1])
         self.resolution = data['resolution']
-        self.map = cv2.imread(data['image'])
+        yaml_dir = os.path.dirname(self.get_parameter('path_to_yaml').get_parameter_value().string_value)
+        self.map = cv2.imread(os.path.join(yaml_dir, data['image']))
         self.waypoint_array = []
         self.robot_frame_waypoint_array = []
 #Show valid waypoints in different process (app doesn't block)
