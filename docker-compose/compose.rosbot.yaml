@@ -58,6 +58,7 @@ services:
     restart: unless-stopped
     volumes:
       - ~/net_expose:/net_expose
+      - ../nav2-wifi-heatmap/config/nav2_params.yaml:/ros2_ws/config/nav2_params.yaml
     environment:
       - ROS_DOMAIN_ID=0
       - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
