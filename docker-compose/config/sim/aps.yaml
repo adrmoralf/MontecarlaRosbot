@@ -1,0 +1,45 @@
+# Fuente de verdad del simulador WiFi — SOLO leído por wifi_simulator_node.
+# El filtro (montecarla_amcl) NO conoce este fichero; usa el radiomap empírico.
+#
+# Sistema de coordenadas: origin en (0,0,0) = centro del pasillo = spawn del robot
+#
+#   Dormitorio : x∈[-5,-1], y∈[ 0.0, 3.5]   AP1 en (-3,  2.0)
+#   Cocina     : x∈[-5,-1], y∈[-3.5, 0.0]   AP3 en (-3, -2.0)
+#   Pasillo    : x∈[-1, 1], y∈[-3.5, 3.5]   (sin AP — zona de paso)
+#   Salón      : x∈[ 1, 5], y∈[-3.5, 3.5]   AP2 en ( 3,  1.0)
+#
+# W esperado robot↔AP (Bresenham sobre mapa SLAM):
+#   pasillo    → AP1:1  AP2:0*  AP3:1
+#   dormitorio → AP1:0  AP2:1–2  AP3:1
+#   cocina     → AP1:1  AP2:1–2  AP3:0
+#   salón      → AP1:2  AP2:0   AP3:2
+#   *puerta del salón alineada con el eje central del pasillo (y=0)
+
+aps:
+  - bssid: "02:00:00:00:00:01"
+    ssid: "AP_Dormitorio"
+    position: [-3.0, 2.0]    # x, y en frame world (metros) — centro del dormitorio
+    rssi_ref: -40.0           # dBm a d_ref
+    d_ref: 1.0                # m
+    n: 2.5                    # exponente path-loss indoor
+    frequency: 2.4e9          # Hz
+
+  - bssid: "02:00:00:00:00:02"
+    ssid: "AP_Salon"
+    position: [3.0, 1.0]     # x, y — centro del salón
+    rssi_ref: -40.0
+    d_ref: 1.0
+    n: 2.5
+    frequency: 2.4e9
+
+  - bssid: "02:00:00:00:00:03"
+    ssid: "AP_Cocina"
+    position: [-3.0, -2.0]   # x, y — centro de la cocina
+    rssi_ref: -40.0
+    d_ref: 1.0
+    n: 2.5
+    frequency: 2.4e9
+
+atten_pared: 5.0    # dB por pared interpuesta (tabique interior)
+sigma_sim:   6.0    # dBm — ruido iid (≠ wifi_sigma del filtro, deliberado)
+scan_duration: 2.0  # s — blur temporal del scan pasivo
