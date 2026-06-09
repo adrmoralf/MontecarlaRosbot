@@ -1,0 +1,224 @@
+<?xml version="1.0"?>
+<!--
+  symmetric_corridor.sdf  —  Mundo Montecarla TFG
+  ─────────────────────────────────────────────────────────────────
+  Geometría (origin = (0,0,0) = spawn del robot = centro del corredor):
+
+       y=1.0 ═══════════════════════════════════════ wall_north
+                R1          vano   corredor   vano          R2
+       y=0.5         tabique_L_top           tabique_R_top
+       y=-0.5        tabique_L_bot           tabique_R_bot
+       y=-1.0 ═══════════════════════════════════════ wall_south
+              x=-5     x=-3              x=3      x=5
+
+  R1 (sala izquierda): x ∈ [-5,-3]    AP1 en (-4, 0)
+  Corredor:            x ∈ [-3, 3]    robot spawna en (0,0)
+  R2 (sala derecha):   x ∈ [ 3, 5]    AP2 en ( 4, 0)
+  Vano simétrico:      y ∈ [-0.5, 0.5]   (1 m — ROSbot pasa con margen)
+
+  Tabla de paredes interpuestas (W) según posición del robot:
+    Corredor ↔ AP1:  W=1   Corredor ↔ AP2: W=1
+    R1       ↔ AP1:  W=0   R1       ↔ AP2: W=2
+    R2       ↔ AP2:  W=0   R2       ↔ AP1: W=2
+  ─────────────────────────────────────────────────────────────────
+  Formato: SDF 1.9 — Ignition Gazebo Fortress (ROS 2 Humble)
+  Si usas Gazebo Classic (11), ver nota al pie del fichero.
+-->
+<sdf version="1.9">
+  <world name="symmetric_corridor">
+
+    <!-- ═══ Plugins requeridos por Ignition Fortress ═══════════════════ -->
+    <plugin filename="gz-sim-physics-system"
+            name="gz::sim::systems::Physics"/>
+    <plugin filename="gz-sim-user-commands-system"
+            name="gz::sim::systems::UserCommands"/>
+    <plugin filename="gz-sim-scene-broadcaster-system"
+            name="gz::sim::systems::SceneBroadcaster"/>
+    <plugin filename="gz-sim-contact-system"
+            name="gz::sim::systems::Contact"/>
+    <!-- OBLIGATORIO para que el RPLIDAR (y cualquier sensor) genere datos -->
+    <plugin filename="gz-sim-sensors-system"
+            name="gz::sim::systems::Sensors">
+      <render_engine>ogre2</render_engine>
+    </plugin>
+    <plugin filename="gz-sim-imu-system"
+            name="gz::sim::systems::Imu"/>
+
+    <!-- ═══ Física ════════════════════════════════════════════════════ -->
+    <physics name="1ms" type="ignored">
+      <max_step_size>0.001</max_step_size>
+      <real_time_factor>1.0</real_time_factor>
+    </physics>
+
+    <!-- ═══ Iluminación ═══════════════════════════════════════════════ -->
+    <light type="directional" name="sun">
+      <cast_shadows>true</cast_shadows>
+      <pose>0 0 10 0 0 0</pose>
+      <diffuse>0.9 0.9 0.9 1</diffuse>
+      <specular>0.3 0.3 0.3 1</specular>
+      <direction>-0.5 0.1 -0.9</direction>
+    </light>
+
+    <!-- Luz adicional relleno para evitar zonas negras en R1/R2 -->
+    <light type="point" name="fill_light">
+      <pose>0 0 1.8 0 0 0</pose>
+      <diffuse>0.4 0.4 0.4 1</diffuse>
+      <specular>0 0 0 1</specular>
+      <attenuation>
+        <range>15</range>
+        <linear>0.05</linear>
+        <constant>0.1</constant>
+        <quadratic>0.0</quadratic>
+      </attenuation>
+    </light>
+
+    <!-- ═══ Suelo ══════════════════════════════════════════════════════ -->
+    <model name="ground_plane">
+      <static>true</static>
+      <link name="link">
+        <collision name="col">
+          <geometry>
+            <plane><normal>0 0 1</normal><size>25 25</size></plane>
+          </geometry>
+        </collision>
+        <visual name="vis">
+          <geometry>
+            <plane><normal>0 0 1</normal><size>25 25</size></plane>
+          </geometry>
+          <material>
+            <ambient>0.55 0.55 0.55 1</ambient>
+            <diffuse>0.55 0.55 0.55 1</diffuse>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- ═══ Paredes exteriores ═════════════════════════════════════════
+         Grosor: 0.2 m   Altura: 2.0 m   z_centro = 1.0 m
+    ══════════════════════════════════════════════════════════════════ -->
+
+    <!-- Pared norte  (y = 1.0 → cara interior) -->
+    <model name="wall_north">
+      <static>true</static>
+      <pose>0 1.1 1 0 0 0</pose>
+      <link name="link">
+        <collision name="col"><geometry><box><size>10.4 0.2 2.0</size></box></geometry></collision>
+        <visual name="vis">
+          <geometry><box><size>10.4 0.2 2.0</size></box></geometry>
+          <material><ambient>0.82 0.82 0.82 1</ambient><diffuse>0.82 0.82 0.82 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- Pared sur  (y = -1.0 → cara interior) -->
+    <model name="wall_south">
+      <static>true</static>
+      <pose>0 -1.1 1 0 0 0</pose>
+      <link name="link">
+        <collision name="col"><geometry><box><size>10.4 0.2 2.0</size></box></geometry></collision>
+        <visual name="vis">
+          <geometry><box><size>10.4 0.2 2.0</size></box></geometry>
+          <material><ambient>0.82 0.82 0.82 1</ambient><diffuse>0.82 0.82 0.82 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- Pared oeste  (x = -5.0 → cara interior) -->
+    <model name="wall_west">
+      <static>true</static>
+      <pose>-5.1 0 1 0 0 0</pose>
+      <link name="link">
+        <collision name="col"><geometry><box><size>0.2 2.4 2.0</size></box></geometry></collision>
+        <visual name="vis">
+          <geometry><box><size>0.2 2.4 2.0</size></box></geometry>
+          <material><ambient>0.82 0.82 0.82 1</ambient><diffuse>0.82 0.82 0.82 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- Pared este  (x = 5.0 → cara interior) -->
+    <model name="wall_east">
+      <static>true</static>
+      <pose>5.1 0 1 0 0 0</pose>
+      <link name="link">
+        <collision name="col"><geometry><box><size>0.2 2.4 2.0</size></box></geometry></collision>
+        <visual name="vis">
+          <geometry><box><size>0.2 2.4 2.0</size></box></geometry>
+          <material><ambient>0.82 0.82 0.82 1</ambient><diffuse>0.82 0.82 0.82 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- ═══ Tabiques interiores con vano central ═══════════════════════
+         Tabique_L: x = -3     Tabique_R: x = +3
+         Vano:      y ∈ [-0.5, 0.5]  (1 m — simétrico)
+         Parte superior: y ∈ [0.5, 1.0]  →  centro y = 0.75
+         Parte inferior: y ∈ [-1.0,-0.5] →  centro y = -0.75
+         Material: tono azul-grisáceo para distinguirlos de paredes exteriores
+    ══════════════════════════════════════════════════════════════════ -->
+
+    <!-- Tabique izquierdo — parte norte (y=0.5 a y=1.0) -->
+    <model name="tabique_left_top">
+      <static>true</static>
+      <pose>-3 0.75 1 0 0 0</pose>
+      <link name="link">
+        <collision name="col"><geometry><box><size>0.2 0.5 2.0</size></box></geometry></collision>
+        <visual name="vis">
+          <geometry><box><size>0.2 0.5 2.0</size></box></geometry>
+          <material><ambient>0.68 0.68 0.85 1</ambient><diffuse>0.68 0.68 0.85 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- Tabique izquierdo — parte sur (y=-1.0 a y=-0.5) -->
+    <model name="tabique_left_bottom">
+      <static>true</static>
+      <pose>-3 -0.75 1 0 0 0</pose>
+      <link name="link">
+        <collision name="col"><geometry><box><size>0.2 0.5 2.0</size></box></geometry></collision>
+        <visual name="vis">
+          <geometry><box><size>0.2 0.5 2.0</size></box></geometry>
+          <material><ambient>0.68 0.68 0.85 1</ambient><diffuse>0.68 0.68 0.85 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- Tabique derecho — parte norte (espejo exacto) -->
+    <model name="tabique_right_top">
+      <static>true</static>
+      <pose>3 0.75 1 0 0 0</pose>
+      <link name="link">
+        <collision name="col"><geometry><box><size>0.2 0.5 2.0</size></box></geometry></collision>
+        <visual name="vis">
+          <geometry><box><size>0.2 0.5 2.0</size></box></geometry>
+          <material><ambient>0.68 0.68 0.85 1</ambient><diffuse>0.68 0.68 0.85 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- Tabique derecho — parte sur (espejo exacto) -->
+    <model name="tabique_right_bottom">
+      <static>true</static>
+      <pose>3 -0.75 1 0 0 0</pose>
+      <link name="link">
+        <collision name="col"><geometry><box><size>0.2 0.5 2.0</size></box></geometry></collision>
+        <visual name="vis">
+          <geometry><box><size>0.2 0.5 2.0</size></box></geometry>
+          <material><ambient>0.68 0.68 0.85 1</ambient><diffuse>0.68 0.68 0.85 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+  </world>
+</sdf>
+
+<!--
+  NOTA para Gazebo Classic (Gazebo 11, si el image usa libgazebo_ros_pkgs):
+  ── Cambiar <sdf version="1.9"> por <sdf version="1.7">
+  ── Eliminar todos los <plugin filename="gz-sim-*"> del <world>
+  ── Añadir al <world>:
+       <plugin name="gazebo_ros_factory" filename="libgazebo_ros_factory.so"/>
+  ── Añadir ground truth al robot model spawn (en compose):
+       ros2 run gazebo_ros spawn_entity.py -entity rosbot2r -file /path/to/rosbot2r.urdf \
+         -x 0 -y 0 -z 0.1
+-->

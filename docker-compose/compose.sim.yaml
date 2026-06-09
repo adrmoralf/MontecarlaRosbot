@@ -1,0 +1,286 @@
+# compose.sim.yaml — Montecarla TFG — entorno simulado
+# ─────────────────────────────────────────────────────────────────────────────
+# TRES PERFILES: (nunca arrancar más de uno a la vez)
+#
+#   map     — construir mapa del corredor simulado con slam_toolbox
+#   record  — grabar bag de sensores (wifi_sim + lidar + GT) para experimentos
+#   replay  — reproducir bag y ejecutar AMCL ± WiFi para evaluación ATE
+#
+# Uso rápido:
+#   docker compose -f compose.sim.yaml --profile map build
+#   docker compose -f compose.sim.yaml --profile map up
+#
+# Todos los contenedores usan ROS_DOMAIN_ID=1 (aislado del robot real).
+# Todos necesitan use_sim_time=true porque el reloj viene de Gazebo/bag.
+# ─────────────────────────────────────────────────────────────────────────────
+
+# ── Ajustes comunes ──────────────────────────────────────────────────────────
+x-ros-env: &ros_env
+  ROS_DOMAIN_ID: "1"            # ← 1, distinto del robot real (0)
+  RMW_IMPLEMENTATION: rmw_fastrtps_cpp
+  DDS_CONFIG: DEFAULT
+
+x-display-env: &display_env
+  DISPLAY: $DISPLAY
+  LIBGL_ALWAYS_SOFTWARE: "1"   # render software — necesario en la mayoría de PCs
+
+services:
+
+  # ══════════════════════════════════════════════════════════════════════════
+  #  PERFIL: map
+  #  Objetivo: teleop por la casa + slam_toolbox → guardar mapa
+  #  Guardar: docker exec slam-toolbox bash -c \
+  #    "source /opt/ros/humble/setup.bash && \
+  #     ros2 run nav2_map_server map_saver_cli -f /maps/casa_simple"
+  # ══════════════════════════════════════════════════════════════════════════
+
+  gazebo:
+    profiles: ["map", "record"]
+    # Imagen confirmada: husarion/rosbot-gazebo:humble
+    # Launch: rosbot_gazebo/launch/simulation.launch.py
+    #   gz_world  — ruta absoluta al SDF (lo montamos en /worlds)
+    #   robot_model — rosbot (obligatorio, no hay default fiable)
+    #   x y z     — spawn del robot; (0,0,0.1) = origen del corredor + offset suelo
+    #   rviz:=False — usamos nuestro propio contenedor rviz
+    #   gz_headless_mode — False para ver Gazebo GUI en pantalla
+    # use_sim_time se activa globalmente dentro del launch (SetParameter), no hace falta pasarlo aquí.
+    image: husarion/rosbot-gazebo:humble
+    network_mode: host
+    ipc: host
+    volumes:
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+      - ../montecarla_sim/worlds:/worlds:ro
+    environment:
+      ROS_DOMAIN_ID: "1"
+      RMW_IMPLEMENTATION: rmw_fastrtps_cpp
+      DDS_CONFIG: DEFAULT
+      DISPLAY: $DISPLAY
+      LIBGL_ALWAYS_SOFTWARE: "1"
+      ROBOT_MODEL_NAME: rosbot    # evita el default vacío del launch
+    command: >
+      ros2 launch rosbot_gazebo simulation.launch.py
+        gz_world:=/worlds/casa_simple.sdf
+        robot_model:=rosbot
+        x:=0.0
+        y:=0.0
+        z:=0.1
+        rviz:=False
+        gz_headless_mode:=False
+
+  slam-toolbox:
+    profiles: ["map"]
+    image: husarion/slam-toolbox:humble
+    network_mode: host
+    ipc: host
+    depends_on:
+      gazebo:
+        condition: service_started
+    volumes:
+      - ./config/slam_params_sim.yaml:/slam_params.yaml   # sim-only: use_sim_time: True
+      - ./maps:/maps
+    environment:
+      <<: *ros_env
+    # sleep 20 — espera a que Gazebo publique /scan y /tf antes de slam_toolbox
+    command: bash -c "sleep 20 && ros2 launch slam_toolbox online_sync_launch.py slam_params_file:=/slam_params.yaml use_sim_time:=true"
+
+  rviz:
+    profiles: ["map", "record", "replay"]
+    image: husarion/rviz2:humble
+    network_mode: host
+    ipc: host
+    volumes:
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+      - ./config/rosbot_pro_mapping.rviz:/root/.rviz2/default.rviz
+    environment:
+      ROS_DOMAIN_ID: "1"
+      RMW_IMPLEMENTATION: rmw_fastrtps_cpp
+      DDS_CONFIG: DEFAULT
+      DISPLAY: $DISPLAY
+      LIBGL_ALWAYS_SOFTWARE: "1"
+
+  # ══════════════════════════════════════════════════════════════════════════
+  #  PERFIL: record
+  #  Objetivo: teleop + grabación de bag con /scan /tf /wifi_scan /ground_truth
+  #  Arranque: docker compose -f compose.sim.yaml --profile record up
+  # ══════════════════════════════════════════════════════════════════════════
+
+  # map-server en record: publica /map (TRANSIENT_LOCAL) para que wifi_simulator
+  # tenga el OccupancyGrid necesario para el raycast de paredes.
+  # nav2_map_server es un lifecycle node — hay que configure+activate explícitamente.
+  map-server-record:
+    profiles: ["record"]
+    image: husarion/slam-toolbox:humble    # tiene nav2_map_server
+    network_mode: host
+    ipc: host
+    volumes:
+      - ./maps:/maps:ro
+    environment:
+      <<: *ros_env
+    command: bash -c "
+      source /opt/ros/humble/setup.bash &&
+      ros2 run nav2_map_server map_server
+        --ros-args -p yaml_filename:=/maps/casa_simple.yaml -p use_sim_time:=true &
+      sleep 5 &&
+      ros2 lifecycle set /map_server configure &&
+      ros2 lifecycle set /map_server activate &&
+      wait"
+
+  wifi-simulator:
+    profiles: ["record"]
+    build:
+      context: ..
+      dockerfile: montecarla_sim/Dockerfile
+    network_mode: host
+    ipc: host
+    depends_on:
+      gazebo:
+        condition: service_started
+      map-server-record:
+        condition: service_started
+    volumes:
+      - ./config/sim/aps.yaml:/aps.yaml:ro
+    environment:
+      <<: *ros_env
+    command: >
+      ros2 run wifi_simulator wifi_simulator_node
+        --ros-args
+        -p aps_file:=/aps.yaml
+        --remap /ground_truth:=/odometry/filtered
+        --log-level wifi_simulator:=debug
+
+  # ground-truth: relay de /odometry/filtered → /ground_truth
+  # En simulación Gazebo el EKF trabaja sobre física determinista (sin ruido real),
+  # por lo que /odometry/filtered ≈ ground truth con drift despreciable para el TFG.
+  # No requiere conocer el nombre del modelo Gazebo.
+  ground-truth-bridge:
+    profiles: ["record"]
+    image: husarion/rosbot-gazebo:humble
+    network_mode: host
+    ipc: host
+    depends_on:
+      gazebo:
+        condition: service_started
+    environment:
+      <<: *ros_env
+    command: bash -c "
+      source /opt/ros/humble/setup.bash &&
+      source /ros2_ws/install/setup.bash &&
+      ros2 run topic_tools relay /odometry/filtered /ground_truth"
+
+  # bag-recorder usa la imagen de wifi_simulator (tiene montecarla_msgs)
+  # para poder registrar /wifi_scan sin errores de tipo desconocido
+  bag-recorder:
+    profiles: ["record"]
+    build:
+      context: ..
+      dockerfile: montecarla_sim/Dockerfile
+    network_mode: host
+    ipc: host
+    depends_on:
+      wifi-simulator:
+        condition: service_started
+    volumes:
+      - ~/sim_bags:/bags
+    environment:
+      <<: *ros_env
+    command: bash -c "
+      source /opt/ros/humble/setup.bash &&
+      source /ros2_ws/install/setup.bash &&
+      mkdir -p /bags &&
+      ros2 bag record
+        /scan /tf /tf_static /wifi_scan /odometry/filtered /clock
+        -o /bags/casa_\$(date +%Y%m%d_%H%M%S)"
+
+  # ══════════════════════════════════════════════════════════════════════════
+  #  PERFIL: replay
+  #  Objetivo: reproducir bag + AMCL ± WiFi → recoger ATE
+  #  Arrancar baseline:  docker compose -f compose.sim.yaml --profile replay up
+  #  Arrancar Montecarla: WIFI_ENABLED=true docker compose -f compose.sim.yaml --profile replay up
+  #
+  #  TODO (Paso 4): montecarla-amcl no existe aún → completar cuando
+  #                 AmclNode.cpp tenga wifiReceived() implementado
+  # ══════════════════════════════════════════════════════════════════════════
+
+  map-server:
+    profiles: ["replay"]
+    image: husarion/slam-toolbox:humble    # tiene nav2_map_server
+    network_mode: host
+    ipc: host
+    volumes:
+      - ./maps:/maps:ro
+    environment:
+      <<: *ros_env
+    command: >
+      ros2 run nav2_map_server map_server
+        --ros-args
+        -p yaml_filename:=/maps/casa_simple.yaml
+        -p use_sim_time:=true
+
+  # montecarla-amcl (stub): reemplazar image por la imagen compilada cuando esté lista
+  # montecarla-amcl:
+  #   profiles: ["replay"]
+  #   image: montecarla-amcl            # build: ../nav2-wifi-heatmap  cuando exista
+  #   network_mode: host
+  #   ipc: host
+  #   depends_on:
+  #     map-server:
+  #       condition: service_started
+  #   volumes:
+  #     - ./maps/radiomap.npy:/radiomap.npy:ro
+  #     - ../nav2-wifi-heatmap/config/nav2_params.yaml:/ros2_ws/config/nav2_params.yaml
+  #   environment:
+  #     <<: *ros_env
+  #     WIFI_ENABLED: ${WIFI_ENABLED:-false}
+  #   command: >
+  #     ros2 launch nav2_bringup localization_launch.py
+  #       params_file:=/ros2_ws/config/nav2_params.yaml
+  #       map:=/maps/corridor_sim.yaml
+  #       use_sim_time:=true
+
+  bag-player:
+    profiles: ["replay"]
+    image: ros:humble
+    network_mode: host
+    ipc: host
+    volumes:
+      - ~/sim_bags:/bags:ro
+    environment:
+      <<: *ros_env
+    # Sustituir <nombre_bag> por el directorio generado en el perfil record
+    command: bash -c "
+      source /opt/ros/humble/setup.bash &&
+      ros2 bag play /bags/<nombre_bag> --clock --rate 1.0"
+
+  # ══════════════════════════════════════════════════════════════════════════
+  #  PERFIL: radiomap
+  #  Objetivo: procesar el bag grabado y generar radiomap_<bssid>.npy
+  #  Uso:
+  #    BAG_NAME=casa_20260609_152706 \
+  #      docker compose -f compose.sim.yaml --profile radiomap run --rm radiomap-builder
+  #
+  #  Salida en docker-compose/maps/:
+  #    radiomap_02_00_00_00_00_01.npy  (AP dormitorio)
+  #    radiomap_02_00_00_00_00_02.npy  (AP salón)
+  #    radiomap_02_00_00_00_00_03.npy  (AP cocina)
+  #    radiomap_meta.yaml
+  # ══════════════════════════════════════════════════════════════════════════
+
+  radiomap-builder:
+    profiles: ["radiomap"]
+    build:
+      context: ..
+      dockerfile: montecarla_sim/Dockerfile
+    volumes:
+      - ~/sim_bags:/bags:ro
+      - ./maps:/maps
+      - ../montecarla_sim/radiomap_builder:/scripts:ro
+    environment:
+      <<: *ros_env
+      BAG_NAME: ${BAG_NAME:-}
+    command: bash -c "
+      source /opt/ros/humble/setup.bash &&
+      source /ros2_ws/install/setup.bash &&
+      python3 /scripts/construir_radiomap.py
+        --bag  /bags/${BAG_NAME}
+        --mapa /maps/casa_simple.yaml
+        --salida /maps/"
