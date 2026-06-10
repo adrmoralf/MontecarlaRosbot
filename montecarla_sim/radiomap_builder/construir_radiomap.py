@@ -30,6 +30,9 @@ import numpy as np
 from pathlib import Path
 from bisect import bisect_left
 
+from scipy.interpolate import RBFInterpolator
+from scipy.spatial import KDTree
+
 import rclpy
 from rclpy.serialization import deserialize_message
 from rosidl_runtime_py.utilities import get_message
@@ -192,6 +195,53 @@ def construir_radiomaps(wifi_msgs, odom_msgs, info_mapa):
     return radiomaps
 
 
+# ── Interpolación RBF ─────────────────────────────────────────────────────────
+
+def interpolar_radiomap(rm_raw, info_mapa, nan_threshold=1.5):
+    """
+    Rellena el radiomap disperso con thin-plate-spline RBF.
+    Celdas a más de nan_threshold metros del punto medido más cercano → NaN.
+
+    Con 67 puntos de medida en una casa de 70m², la distancia media entre
+    medidas es ~1m. Con nan_threshold=1.5m el mapa queda prácticamente completo.
+    """
+    res   = info_mapa['resolucion']
+    ox    = info_mapa['origen_x']
+    oy    = info_mapa['origen_y']
+    ancho = info_mapa['ancho']
+    alto  = info_mapa['alto']
+
+    filas_med, cols_med = np.where(~np.isnan(rm_raw))
+    if len(filas_med) < 4:
+        print('  RBF: menos de 4 medidas, se guarda el mapa sin interpolar')
+        return rm_raw
+
+    # Coordenadas métricas de los puntos medidos
+    x_med = cols_med * res + ox + res / 2
+    y_med = filas_med * res + oy + res / 2
+    pts   = np.column_stack([x_med, y_med])
+    vals  = rm_raw[filas_med, cols_med].astype(np.float64)
+
+    # Grid de consulta = todas las celdas del mapa
+    cols_q, filas_q = np.meshgrid(np.arange(ancho), np.arange(alto))
+    x_q   = cols_q.ravel() * res + ox + res / 2
+    y_q   = filas_q.ravel() * res + oy + res / 2
+    pts_q = np.column_stack([x_q, y_q])
+
+    rbf         = RBFInterpolator(pts, vals, kernel='thin_plate_spline', smoothing=1.0)
+    vals_interp = rbf(pts_q).reshape(alto, ancho).astype(np.float32)
+    vals_interp = np.clip(vals_interp, -100.0, -30.0)
+
+    # Máscara NaN para celdas lejos de cualquier medida
+    dist, _ = KDTree(pts).query(pts_q)
+    vals_interp[dist.reshape(alto, ancho) > nan_threshold] = np.nan
+
+    n_validas = int(np.sum(~np.isnan(vals_interp)))
+    print(f'  RBF: {len(filas_med)} medidas → {n_validas} celdas con valor '
+          f'(umbral_nan={nan_threshold}m)')
+    return vals_interp
+
+
 # ── Guardado ───────────────────────────────────────────────────────────────────
 
 def guardar(radiomaps, info_mapa, ruta_salida):
@@ -249,11 +299,17 @@ def main():
         print('ERROR: no hay mensajes /odometry/filtered en el bag', file=sys.stderr)
         sys.exit(1)
 
-    print('[3/4] Construyendo radiomaps...')
-    radiomaps = construir_radiomaps(wifi_msgs, odom_msgs, info_mapa)
-    print(f'      {len(radiomaps)} APs encontrados: {list(radiomaps.keys())}')
+    print('[3/4] Construyendo radiomaps (medidas brutas)...')
+    radiomaps_raw = construir_radiomaps(wifi_msgs, odom_msgs, info_mapa)
+    print(f'      {len(radiomaps_raw)} APs encontrados: {list(radiomaps_raw.keys())}')
 
-    print(f'[4/4] Guardando en {args.salida}:')
+    print('[4/4] Interpolando con RBF thin-plate-spline...')
+    radiomaps = {}
+    for bssid, rm_raw in radiomaps_raw.items():
+        print(f'  {bssid}:')
+        radiomaps[bssid] = interpolar_radiomap(rm_raw, info_mapa, nan_threshold=1.5)
+
+    print(f'[5/5] Guardando en {args.salida}:')
     guardar(radiomaps, info_mapa, args.salida)
 
     print('¡Hecho!')

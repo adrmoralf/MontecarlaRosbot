@@ -8,6 +8,7 @@ WORKDIR /ros2_ws
 RUN apt-get update && apt-get install -y \
         python3-colcon-common-extensions \
         python3-numpy \
+        python3-scipy \
         python3-yaml \
         ros-humble-nav-msgs \
         ros-humble-rmw-fastrtps-cpp \
