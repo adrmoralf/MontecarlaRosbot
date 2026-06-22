@@ -305,4 +305,5 @@ services:
       python3 /scripts/construir_radiomap.py
         --bag  /bags/${BAG_NAME}
         --mapa /maps/casa_simple.yaml
-        --salida /maps/"
+        --salida /maps/
+        --scan-duration 1.0"

@@ -139,15 +139,18 @@ class WifiSimulatorNode(Node):
                     self._datos_mapa, self._info_mapa
                 )
 
+                # Sin ruido por pose: cada muestra es el valor físico determinista.
+                # El ruido se añade una sola vez al promedio final (ver abajo),
+                # de modo que sigma_sim es la varianza real del scan, no sigma/√N.
                 rssi = (rssi_ref
                         - 10.0 * n * math.log10(d / d_ref)
-                        - W * self._atten_pared
-                        + self._rng.normal(0.0, self._sigma_sim))
+                        - W * self._atten_pared)
 
-                rssi = float(np.clip(rssi, -100.0, -30.0))
                 valores_rssi.append(rssi)
 
-            rssi_medio = float(np.mean(valores_rssi))
+            # Ruido gaussiano aplicado UNA vez al scan completo
+            ruido = self._rng.normal(0.0, self._sigma_sim)
+            rssi_medio = float(np.clip(float(np.mean(valores_rssi)) + ruido, -100.0, -30.0))
 
             medicion = WifiMeasurement()
             medicion.bssid     = ap['bssid']
