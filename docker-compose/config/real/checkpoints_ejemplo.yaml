@@ -1,0 +1,78 @@
+# checkpoints.yaml — posiciones físicas del ground truth para el experimento real
+#
+# INSTRUCCIONES:
+#   1. Con el robot en el punto de inicio (spawn = (0,0)), colocar cinta en el suelo.
+#   2. Con RViz activo y el mapa cargado, mover el robot a cada punto marcado.
+#      Leer las coordenadas (x, y) que muestra RViz en "Publish Point" o en /amcl_pose.
+#   3. Actualizar x, y de cada checkpoint con los valores reales.
+#   4. Tolerancia aceptable: ±5 cm entre la marca física y las coordenadas del mapa.
+#
+# CRITERIOS DE SELECCIÓN de puntos:
+#   — ≥ 3 puntos por zona relevante (dormitorio, cocina, pasillo, salón)
+#   — No en puertas (zona ambigua para el láser)
+#   — Puntos donde el robot puede estar 5-10 s inmóvil
+#   — Al menos 2 puntos en cada zona simétrica (dormitorio/cocina)
+#
+# Coordenadas de EJEMPLO para casa_simple (sim). REEMPLAZAR con las reales.
+
+checkpoints:
+  - id: C01
+    zona: dormitorio
+    x: -3.0
+    y:  2.0
+    descripcion: "centro dormitorio"
+  - id: C02
+    zona: dormitorio
+    x: -4.0
+    y:  1.5
+    descripcion: "esquina dormitorio (fondo)"
+  - id: C03
+    zona: dormitorio
+    x: -2.0
+    y:  2.5
+    descripcion: "dormitorio, cerca de la puerta"
+  - id: C04
+    zona: pasillo
+    x:  0.0
+    y:  1.5
+    descripcion: "pasillo norte"
+  - id: C05
+    zona: pasillo
+    x:  0.0
+    y:  0.0
+    descripcion: "pasillo centro (punto de inicio / spawn)"
+  - id: C06
+    zona: pasillo
+    x:  0.0
+    y: -1.5
+    descripcion: "pasillo sur"
+  - id: C07
+    zona: cocina
+    x: -3.0
+    y: -2.0
+    descripcion: "centro cocina"
+  - id: C08
+    zona: cocina
+    x: -4.0
+    y: -1.5
+    descripcion: "esquina cocina (fondo)"
+  - id: C09
+    zona: cocina
+    x: -2.0
+    y: -2.5
+    descripcion: "cocina, cerca de la puerta"
+  - id: C10
+    zona: salon
+    x:  3.0
+    y:  1.0
+    descripcion: "centro salón"
+  - id: C11
+    zona: salon
+    x:  4.0
+    y:  2.0
+    descripcion: "salón fondo"
+  - id: C12
+    zona: salon
+    x:  2.5
+    y: -1.0
+    descripcion: "entrada salón"
