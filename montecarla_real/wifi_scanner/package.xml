@@ -1,0 +1,11 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>wifi_scanner</name>
+  <version>0.1.0</version>
+  <description>Nodo ROS 2 que publica WifiScan desde wlan0 real usando iw scan dump</description>
+  <maintainer email="adrmoralf@gmail.com">Adrian</maintainer>
+  <license>Apache-2.0</license>
+  <depend>rclpy</depend>
+  <depend>montecarla_msgs</depend>
+  <export><build_type>ament_python</build_type></export>
+</package>
