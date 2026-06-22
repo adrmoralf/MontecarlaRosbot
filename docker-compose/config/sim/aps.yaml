@@ -42,4 +42,4 @@ aps:
 
 atten_pared: 5.0    # dB por pared interpuesta (tabique interior)
 sigma_sim:   6.0    # dBm — ruido iid (≠ wifi_sigma del filtro, deliberado)
-scan_duration: 2.0  # s — blur temporal del scan pasivo
+scan_duration: 1.0  # s — blur temporal del scan pasivo (reducido de 2.0: menos smearing en puertas)

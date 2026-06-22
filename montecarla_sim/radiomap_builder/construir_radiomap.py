@@ -142,12 +142,36 @@ def _pose_mas_cercana(t_ns, odom_msgs, timestamps_odom):
     return despues[1], despues[2]
 
 
+def _pose_media_en_ventana(t_ns, dur_s, odom_msgs, timestamps_odom):
+    """
+    Calcula la pose media del robot durante la ventana [t_ns - dur_s, t_ns].
+
+    El wifi_scan representa un promedio sobre scan_duration segundos. Asignar
+    el RSSI a la pose media de esa ventana evita el 'smearing' en las puertas,
+    donde la pose puntual puede estar en una habitación pero el promedio del
+    scan incluye señal de la otra.
+    """
+    dur_ns = int(dur_s * 1e9)
+    t_inicio = t_ns - dur_ns
+    idx_ini = bisect_left(timestamps_odom, t_inicio)
+    idx_fin = bisect_left(timestamps_odom, t_ns)
+    ventana = odom_msgs[idx_ini:idx_fin]
+    if not ventana:
+        return _pose_mas_cercana(t_ns, odom_msgs, timestamps_odom)
+    xs = [o[1] for o in ventana]
+    ys = [o[2] for o in ventana]
+    return float(np.mean(xs)), float(np.mean(ys))
+
+
 # ── Construcción del radiomap ──────────────────────────────────────────────────
 
-def construir_radiomaps(wifi_msgs, odom_msgs, info_mapa):
+def construir_radiomaps(wifi_msgs, odom_msgs, info_mapa, scan_duration=1.0):
     """
     Construye {bssid: array float32 (alto × ancho)} con RSSI medio por celda.
     Celdas sin ninguna medida quedan como NaN.
+
+    scan_duration: ventana temporal del wifi_scan (s). Se usa para calcular la
+    pose media del robot durante ese período, evitando smearing en las puertas.
     """
     resolucion = info_mapa['resolucion']
     ox         = info_mapa['origen_x']
@@ -162,7 +186,7 @@ def construir_radiomaps(wifi_msgs, odom_msgs, info_mapa):
 
     omitidas = 0
     for (t_ns, wifi_msg) in wifi_msgs:
-        x, y = _pose_mas_cercana(t_ns, odom_msgs, timestamps_odom)
+        x, y = _pose_media_en_ventana(t_ns, scan_duration, odom_msgs, timestamps_odom)
 
         col  = int((x - ox) / resolucion)
         fila = int((y - oy) / resolucion)
@@ -228,6 +252,9 @@ def interpolar_radiomap(rm_raw, info_mapa, nan_threshold=1.5):
     y_q   = filas_q.ravel() * res + oy + res / 2
     pts_q = np.column_stack([x_q, y_q])
 
+    # smoothing=1.0 → interpolante suavizado: no pasa exactamente por los puntos
+    # pero amortigua el ruido de medida (σ=6dBm). Con smoothing=0.0 y datos
+    # ruidosos el TPS crea oscilaciones que confunden al filtro.
     rbf         = RBFInterpolator(pts, vals, kernel='thin_plate_spline', smoothing=1.0)
     vals_interp = rbf(pts_q).reshape(alto, ancho).astype(np.float32)
     vals_interp = np.clip(vals_interp, -100.0, -30.0)
@@ -277,9 +304,11 @@ def main():
     parser = argparse.ArgumentParser(
         description='Construye radiomap.npy desde un bag Montecarla'
     )
-    parser.add_argument('--bag',    required=True, help='Directorio del bag')
-    parser.add_argument('--mapa',   required=True, help='Ruta al .yaml del mapa SLAM')
-    parser.add_argument('--salida', default='/maps/', help='Directorio de salida')
+    parser.add_argument('--bag',           required=True, help='Directorio del bag')
+    parser.add_argument('--mapa',          required=True, help='Ruta al .yaml del mapa SLAM')
+    parser.add_argument('--salida',        default='/maps/', help='Directorio de salida')
+    parser.add_argument('--scan-duration', type=float, default=1.0,
+                        help='Duración del scan WiFi en segundos (default 1.0, debe coincidir con aps.yaml)')
     args = parser.parse_args()
 
     print(f'[1/4] Leyendo mapa: {args.mapa}')
@@ -299,8 +328,8 @@ def main():
         print('ERROR: no hay mensajes /odometry/filtered en el bag', file=sys.stderr)
         sys.exit(1)
 
-    print('[3/4] Construyendo radiomaps (medidas brutas)...')
-    radiomaps_raw = construir_radiomaps(wifi_msgs, odom_msgs, info_mapa)
+    print(f'[3/4] Construyendo radiomaps (medidas brutas, scan_duration={args.scan_duration}s)...')
+    radiomaps_raw = construir_radiomaps(wifi_msgs, odom_msgs, info_mapa, args.scan_duration)
     print(f'      {len(radiomaps_raw)} APs encontrados: {list(radiomaps_raw.keys())}')
 
     print('[4/4] Interpolando con RBF thin-plate-spline...')
