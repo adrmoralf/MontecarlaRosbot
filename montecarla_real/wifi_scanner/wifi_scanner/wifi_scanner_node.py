@@ -43,7 +43,7 @@ class WifiScannerNode(Node):
         frecuencia    = self.declare_parameter('frecuencia_hz', 0.5).value
         bssids_param  = self.declare_parameter('bssids_permitidos', []).value
 
-        self._bssids_permitidos: set[str] = {b.upper() for b in bssids_param}
+        self._bssids_permitidos: set[str] = {b.upper() for b in (bssids_param or [])}
         self._backend: str = 'iw'   # 'iw' o 'nmcli'
         self._cache_poblada: bool = False
 
