@@ -94,7 +94,6 @@ services:
         --ros-args
         -p interfaz:=wlan0
         -p frecuencia_hz:=0.5
-        -p bssids_permitidos:=[]
 
   bag-recorder-survey:
     profiles: ["survey"]
