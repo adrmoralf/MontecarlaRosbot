@@ -1,0 +1,15 @@
+{
+  "defaultViewMode": "preview",
+  "foldHeading": false,
+  "foldIndent": true,
+  "promptDelete": true,
+  "trashOption": "local",
+  "useMarkdownLinks": false,
+  "newLinkFormat": "shortest",
+  "attachmentFolderPath": "Attachments",
+  "spellcheck": false,
+  "strictLineBreaks": false,
+  "showFrontmatter": false,
+  "tabSize": 2,
+  "readableLineLength": true
+}

@@ -1,0 +1,191 @@
+{
+  "main": {
+    "id": "03c4b792083c66a9",
+    "type": "split",
+    "children": [
+      {
+        "id": "8e535a00c28c27d4",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "01d0e4195023b7a5",
+            "type": "leaf",
+            "state": {
+              "type": "graph",
+              "state": {},
+              "icon": "lucide-git-fork",
+              "title": "Graph view"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "vertical"
+  },
+  "left": {
+    "id": "140a8a0a5c4c8b40",
+    "type": "split",
+    "children": [
+      {
+        "id": "abd970bc4e71c17b",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "2a6ae66d20d9d717",
+            "type": "leaf",
+            "state": {
+              "type": "file-explorer",
+              "state": {
+                "sortOrder": "alphabetical",
+                "autoReveal": true
+              },
+              "icon": "lucide-folder-closed",
+              "title": "Files"
+            }
+          },
+          {
+            "id": "ada3e2ff74625f6d",
+            "type": "leaf",
+            "state": {
+              "type": "tag",
+              "state": {
+                "sortOrder": "frequency",
+                "useHierarchy": true
+              },
+              "icon": "lucide-tags",
+              "title": "Tags"
+            }
+          },
+          {
+            "id": "dd745232eb2df39a",
+            "type": "leaf",
+            "state": {
+              "type": "search",
+              "state": {
+                "query": "",
+                "matchingCase": false,
+                "explainSearch": false,
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical"
+              },
+              "icon": "lucide-search",
+              "title": "Search"
+            }
+          },
+          {
+            "id": "5c0c8084ad352578",
+            "type": "leaf",
+            "state": {
+              "type": "bookmarks",
+              "state": {},
+              "icon": "lucide-bookmark",
+              "title": "Bookmarks"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 280
+  },
+  "right": {
+    "id": "dca79c876cd2fee9",
+    "type": "split",
+    "children": [
+      {
+        "id": "f2ec82649e47bbef",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "296507a5fd2a5f96",
+            "type": "leaf",
+            "state": {
+              "type": "backlink",
+              "state": {
+                "file": "Home.md",
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical",
+                "backlinkCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-coming-in",
+              "title": "Backlinks"
+            }
+          },
+          {
+            "id": "887d94479558bc15",
+            "type": "leaf",
+            "state": {
+              "type": "outline",
+              "state": {
+                "file": "Home.md",
+                "followCursor": true
+              },
+              "icon": "lucide-list",
+              "title": "Outline"
+            }
+          },
+          {
+            "id": "2918a3dcc66c7454",
+            "type": "leaf",
+            "state": {
+              "type": "outgoing-link",
+              "state": {
+                "file": "memoria_tecnica_montecarla.md",
+                "linksCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-going-out",
+              "title": "Outgoing links from memoria_tecnica_montecarla"
+            }
+          },
+          {
+            "id": "33d8068cbe5e3714",
+            "type": "leaf",
+            "state": {
+              "type": "all-properties",
+              "state": {
+                "sortOrder": "frequency",
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-archive",
+              "title": "All properties"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 280,
+    "collapsed": true
+  },
+  "left-ribbon": {
+    "hiddenItems": {
+      "switcher:Open quick switcher": false,
+      "graph:Open graph view": false,
+      "daily-notes:Open today's daily note": false,
+      "templates:Insert template": false,
+      "command-palette:Open command palette": false
+    }
+  },
+  "active": "01d0e4195023b7a5",
+  "lastOpenFiles": [
+    "Memoria/Cap6_Conclusiones.md.tmp.4939.88a4fd60c6ff",
+    "Memoria/Cap5_Simulacion_Resultados.md.tmp.4939.b6380331e4f6",
+    "Memoria/Cap4_Desarrollo.md.tmp.4939.452015127b2b",
+    "Memoria/Cap3_Entorno_Trabajo.md.tmp.4939.1f3173f5fd41",
+    "Memoria/Cap2_Estado_Arte.md.tmp.4939.4a0a0bef5362",
+    "Memoria/Cap1_Introduccion.md.tmp.4939.e11c30288ec9",
+    "Home.md",
+    "memoria_tecnica_montecarla.md",
+    "diario.md",
+    "Templates/Sesion Diaria.md",
+    "Planes/plan_robot_real.md",
+    "Planes/plan_simulacion.md",
+    "errores.md",
+    "proyectos_relacionados_wifi_localizacion.md"
+  ]
+}
