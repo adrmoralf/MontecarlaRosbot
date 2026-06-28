@@ -49,7 +49,7 @@ services:
         serial_baudrate:=256000
 
   slam-toolbox:
-    profiles: ["map"]
+    profiles: ["map", "opcion_a"]
     image: husarion/slam-toolbox:humble
     network_mode: host
     ipc: host
@@ -67,12 +67,15 @@ services:
     command: bash -c "sleep 30 && ros2 launch slam_toolbox online_sync_launch.py slam_params_file:=/slam_params.yaml"
 
   # ── PERFIL: survey ──────────────────────────────────────────────────────────
-  # Graba el bag de evaluación para el experimento real.
-  # El mismo bag sirve para: (a) construir el radiomap, (b) replay A/B en el PC.
+  # Survey SIN SLAM (mapa ya hecho). Solo graba WiFi + sensores.
+  # El bag resultante requiere post-proceso (Opción B) para alinear el radiomap.
   #
   # Prerrequisitos:
   #   1. Mapa SLAM ya guardado en docker-compose/maps/casa_real.{pgm,yaml}
   #   2. docker build -f montecarla_real/Dockerfile -t wifi-scanner:real . (en el ROSbot)
+  #   3. En host ROSbot ANTES de lanzar:
+  #      while true; do sudo -n nmcli device wifi rescan ifname wlan0 2>/dev/null; sleep 20; done &
+  #      sleep 20 && iw dev wlan0 scan dump | grep -c "^BSS"   # debe ser > 10
   #
   # Requisito Docker: NET_ADMIN para iw scan dump (si falla, fallback a nmcli via D-Bus)
 
@@ -116,6 +119,92 @@ services:
       ros2 bag record
         /scan /tf /tf_static /odometry/filtered /wifi_scan
         -o /bags/survey_$(date +%Y%m%d_%H%M%S)"
+
+  # ── PERFIL: opcion_a ────────────────────────────────────────────────────────
+  # Survey CON SLAM simultáneo — el bag tendrá /tf con map→odom.
+  # El radiomap se construye directamente con --pose-topic /tf sin post-proceso.
+  #
+  # PROCEDIMIENTO COMPLETO (ver diario.md sesión 2026-06-28 para detalles):
+  #
+  # [ROSbot SSH — ANTES de lanzar el compose]:
+  #   while true; do sudo -n nmcli device wifi rescan ifname wlan0 2>/dev/null; sleep 20; done &
+  #   sleep 20 && iw dev wlan0 scan dump | grep -c "^BSS"   # ≥ 10 APs
+  #
+  # [Lanzar el compose]:
+  #   docker compose -f compose.rosbot.yaml --profile opcion_a up -d
+  #   # Esperar ~70s (30s sleep slam + ~40s SLAM init + bag inicia)
+  #   # Verificar: ros2 run tf2_ros tf2_echo map odom   (desde PC)
+  #
+  # [Teleop desde PC durante 7-10 min — cubrir TODA la casa, sin prisas]:
+  #   ros2 run teleop_twist_keyboard teleop_twist_keyboard
+  #
+  # [Al terminar — GUARDAR MAPA primero, luego bajar]:
+  #   ros2 service call /slam_toolbox/save_map slam_toolbox/srv/SaveMap \
+  #     "{name: {data: '/maps/opcionA_$(date +%Y%m%d)'}}"
+  #   sleep 10
+  #   docker stop docker-compose-bag-recorder-opcionA-1
+  #   sleep 10
+  #   docker compose -f compose.rosbot.yaml --profile opcion_a down
+  #
+  # [Copiar bag al PC]:
+  #   scp -r husarion@<IP>:~/real_bags/opcionA_* ~/real_bags/
+  #
+  # [Construir radiomap en el PC]:
+  #   source /opt/ros/humble/setup.bash && source install/setup.bash
+  #   python3 montecarla_sim/radiomap_builder/construir_radiomap.py \
+  #     --bag ~/real_bags/opcionA_XXXXXXXX_XXXXXX \
+  #     --pose-topic /tf \
+  #     --mapa docker-compose/maps/opcionA_YYYYMMDD.yaml \
+  #     --salida docker-compose/maps/ \
+  #     --bssids 30:1F:48:0F:32:09 62:FF:CE:40:8F:16 D4:B9:2F:32:35:80
+
+  wifi-scanner-opcionA:
+    profiles: ["opcion_a"]
+    image: wifi-scanner:real
+    network_mode: host
+    ipc: host
+    cap_add:
+      - NET_ADMIN
+    volumes:
+      - /var/run/dbus:/var/run/dbus:ro
+    environment:
+      - ROS_DOMAIN_ID=0
+      - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
+      - DDS_CONFIG=DEFAULT
+    # 1 Hz (doble de muestras WiFi que en survey estándar) para mayor densidad del radiomap
+    command: >
+      ros2 run wifi_scanner wifi_scanner_node
+        --ros-args
+        -p interfaz:=wlan0
+        -p frecuencia_hz:=1.0
+
+  bag-recorder-opcionA:
+    profiles: ["opcion_a"]
+    image: wifi-scanner:real
+    network_mode: host
+    ipc: host
+    depends_on:
+      slam-toolbox:
+        condition: service_started
+      wifi-scanner-opcionA:
+        condition: service_started
+    volumes:
+      - ~/real_bags:/bags
+    environment:
+      - ROS_DOMAIN_ID=0
+      - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
+      - DDS_CONFIG=DEFAULT
+    # sleep 60: espera a que slam_toolbox arranque (ya tiene sleep 30 propio)
+    # y publique map→odom (otros ~20-30s). Total desde inicio: ~60s.
+    # SIN sleep suficiente, los primeros minutos del bag no tendrán map→odom → poses incorrectas.
+    command: bash -c "
+      source /opt/ros/humble/setup.bash &&
+      source /ros2_ws/install/setup.bash &&
+      sleep 60 &&
+      mkdir -p /bags &&
+      ros2 bag record
+        /scan /tf /tf_static /odometry/filtered /wifi_scan
+        -o /bags/opcionA_$(date +%Y%m%d_%H%M%S)"
 
   nav2:
     image: nav2-wifi-heatmap

@@ -24,6 +24,7 @@ O directamente con docker run:
 """
 
 import argparse
+import math
 import sys
 import yaml
 import numpy as np
@@ -79,9 +80,9 @@ def _leer_dimensiones_pgm(ruta):
 
 # ── Lectura del bag ────────────────────────────────────────────────────────────
 
-def leer_bag(ruta_bag):
+def leer_bag(ruta_bag, pose_topic='/odometry/filtered'):
     """
-    Lee /wifi_scan y /odometry/filtered del bag.
+    Lee /wifi_scan y el tópico de pose indicado del bag.
 
     IMPORTANTE: se usa el timestamp de grabación del bag (wall clock), NO el
     header.stamp del mensaje. Motivo: wifi_simulator arranca sin use_sim_time,
@@ -89,6 +90,11 @@ def leer_bag(ruta_bag):
     odometry/filtered usa tiempo de simulación (~0–220 s). Sus header.stamps
     no son comparables. El timestamp del bag es wall clock para ambos tópicos
     y permite sincronización correcta.
+
+    pose_topic puede ser:
+      '/odometry/filtered'  — nav_msgs/msg/Odometry      (sim o survey sin SLAM)
+      '/amcl_pose'          — geometry_msgs/msg/PoseWithCovarianceStamped (replay con AMCL)
+    Ambos exponen la pose en msg.pose.pose.position.{x,y}.
 
     Devuelve:
       wifi_msgs: [(t_bag_ns, WifiScan)]  — ordenado por tiempo de grabación
@@ -112,7 +118,7 @@ def leer_bag(ruta_bag):
             msg  = deserialize_message(datos, tipo)
             wifi_msgs.append((t_bag_ns, msg))
 
-        elif topic == '/odometry/filtered':
+        elif topic == pose_topic:
             tipo = get_message(tipos[topic])
             msg  = deserialize_message(datos, tipo)
             x = msg.pose.pose.position.x
@@ -124,6 +130,115 @@ def leer_bag(ruta_bag):
     wifi_msgs.sort(key=lambda w: w[0])
 
     return wifi_msgs, odom_msgs
+
+
+# ── Lectura del bag — modo Opción A (SLAM simultáneo) ─────────────────────────
+
+def _quat_to_yaw(qx, qy, qz, qw):
+    """Convierte cuaternión a yaw (rotación alrededor del eje Z)."""
+    return math.atan2(2.0 * (qw * qz + qx * qy),
+                      1.0 - 2.0 * (qy * qy + qz * qz))
+
+
+def _indice_mas_cercano(ts_sorted, t_ns):
+    """Índice del elemento más cercano a t_ns en lista ordenada ts_sorted."""
+    idx = bisect_left(ts_sorted, t_ns)
+    if idx == 0:
+        return 0
+    if idx >= len(ts_sorted):
+        return len(ts_sorted) - 1
+    if abs(ts_sorted[idx - 1] - t_ns) <= abs(ts_sorted[idx] - t_ns):
+        return idx - 1
+    return idx
+
+
+def leer_bag_tf(ruta_bag):
+    """
+    Lee /wifi_scan y /tf del bag (Opción A: SLAM + survey simultáneos).
+
+    Extrae los transforms 'map→odom' (slam_toolbox) y 'odom→base_link' (EKF)
+    de los mensajes /tf y los compone para obtener la pose del robot en el
+    frame 'map' a la cadencia de la odometría (~30 Hz).
+
+    El bag DEBE contener el transform map→odom en /tf, lo que solo ocurre
+    si slam_toolbox estaba corriendo durante la grabación.
+
+    Devuelve:
+      wifi_msgs:  [(t_bag_ns, WifiScan)]   — ordenado por tiempo de grabación
+      poses_map:  [(t_bag_ns, x_map, y_map)] — pose robot en map frame (~30 Hz)
+    """
+    lector = rosbag2_py.SequentialReader()
+    lector.open(rosbag2_py.StorageOptions(uri=str(ruta_bag), storage_id='sqlite3'),
+                rosbag2_py.ConverterOptions('', ''))
+
+    tipos = {t.name: t.type for t in lector.get_all_topics_and_types()}
+
+    wifi_msgs     = []
+    map_odom_raw  = []   # [(t_ns_tf, tx, ty, yaw)]  — slam_toolbox → map→odom
+    odom_base_raw = []   # [(t_bag_ns, tx, ty, yaw)] — EKF → odom→base_link
+
+    while lector.has_next():
+        topic, datos, t_bag_ns = lector.read_next()
+
+        if topic == '/wifi_scan':
+            tipo = get_message(tipos[topic])
+            msg  = deserialize_message(datos, tipo)
+            wifi_msgs.append((t_bag_ns, msg))
+
+        elif topic in ('/tf', '/tf_static'):
+            tipo = get_message(tipos[topic])
+            msg  = deserialize_message(datos, tipo)
+            for tf in msg.transforms:
+                # Usar timestamp del header del TF (más preciso que t_bag_ns para TF)
+                t_tf = (int(tf.header.stamp.sec) * 10**9 +
+                        int(tf.header.stamp.nanosec))
+                tx  = tf.transform.translation.x
+                ty  = tf.transform.translation.y
+                q   = tf.transform.rotation
+                yaw = _quat_to_yaw(q.x, q.y, q.z, q.w)
+
+                if tf.header.frame_id == 'map' and tf.child_frame_id == 'odom':
+                    map_odom_raw.append((t_tf, tx, ty, yaw))
+                elif tf.header.frame_id == 'odom' and tf.child_frame_id == 'base_link':
+                    # Para odom→base_link usamos t_bag_ns (wall clock del grabador)
+                    # para mantener coherencia con t_bag_ns de wifi_scan
+                    odom_base_raw.append((t_bag_ns, tx, ty, yaw))
+
+    map_odom_raw.sort(key=lambda x: x[0])
+    odom_base_raw.sort(key=lambda x: x[0])
+    wifi_msgs.sort(key=lambda x: x[0])
+
+    if not map_odom_raw:
+        raise ValueError(
+            'No hay transform map→odom en /tf del bag.\n'
+            'Asegúrate de que slam_toolbox estaba corriendo durante la grabación.\n'
+            'Verifica con: grep "map" <bag>/metadata.yaml'
+        )
+    if not odom_base_raw:
+        raise ValueError('No hay transform odom→base_link en /tf del bag.')
+
+    # Componer T_map_odom * T_odom_base en cada muestra de odom→base_link
+    ts_mo = [x[0] for x in map_odom_raw]
+    poses_map = []
+
+    for t_bag_ns, tx_ob, ty_ob, yaw_ob in odom_base_raw:
+        # Buscar map→odom más cercano en tiempo
+        idx_mo = _indice_mas_cercano(ts_mo, t_bag_ns)
+        _, tx_mo, ty_mo, yaw_mo = map_odom_raw[idx_mo]
+
+        # Composición 2D: T_map_base = T_map_odom * T_odom_base
+        cos_mo = math.cos(yaw_mo)
+        sin_mo = math.sin(yaw_mo)
+        x_map  = tx_mo + cos_mo * tx_ob - sin_mo * ty_ob
+        y_map  = ty_mo + sin_mo * tx_ob + cos_mo * ty_ob
+
+        poses_map.append((t_bag_ns, x_map, y_map))
+
+    print(f'      {len(map_odom_raw)} transforms map→odom,  '
+          f'{len(odom_base_raw)} odom→base_link → '
+          f'{len(poses_map)} poses en map frame')
+
+    return wifi_msgs, poses_map
 
 
 # ── Sincronización temporal ────────────────────────────────────────────────────
@@ -309,6 +424,13 @@ def main():
     parser.add_argument('--salida',        default='/maps/', help='Directorio de salida')
     parser.add_argument('--scan-duration', type=float, default=1.0,
                         help='Duración del scan WiFi en segundos (default 1.0, debe coincidir con aps.yaml)')
+    parser.add_argument('--bssids', nargs='+', default=[],
+                        help='Lista de BSSIDs a incluir (vacío = todos)')
+    parser.add_argument('--pose-topic', default='/odometry/filtered',
+                        help='Tópico de pose:\n'
+                             '  /odometry/filtered  — sim o survey sin SLAM (frame odom)\n'
+                             '  /amcl_pose          — replay con AMCL (frame map, Opción B)\n'
+                             '  /tf                 — SLAM simultáneo (frame map, Opción A)')
     args = parser.parse_args()
 
     print(f'[1/4] Leyendo mapa: {args.mapa}')
@@ -317,19 +439,29 @@ def main():
           f'res={info_mapa["resolucion"]}m, '
           f'origen=({info_mapa["origen_x"]:.2f}, {info_mapa["origen_y"]:.2f})')
 
-    print(f'[2/4] Leyendo bag: {args.bag}')
-    wifi_msgs, odom_msgs = leer_bag(args.bag)
-    print(f'      {len(wifi_msgs)} wifi_scan,  {len(odom_msgs)} odometry/filtered')
+    print(f'[2/4] Leyendo bag: {args.bag}  (pose: {args.pose_topic})')
+    try:
+        if args.pose_topic == '/tf':
+            wifi_msgs, odom_msgs = leer_bag_tf(args.bag)
+        else:
+            wifi_msgs, odom_msgs = leer_bag(args.bag, pose_topic=args.pose_topic)
+            print(f'      {len(wifi_msgs)} wifi_scan,  {len(odom_msgs)} {args.pose_topic}')
+    except ValueError as e:
+        print(f'ERROR: {e}', file=sys.stderr)
+        sys.exit(1)
 
     if not wifi_msgs:
         print('ERROR: no hay mensajes /wifi_scan en el bag', file=sys.stderr)
         sys.exit(1)
     if not odom_msgs:
-        print('ERROR: no hay mensajes /odometry/filtered en el bag', file=sys.stderr)
+        print(f'ERROR: no hay poses en el bag (topic={args.pose_topic})', file=sys.stderr)
         sys.exit(1)
 
     print(f'[3/4] Construyendo radiomaps (medidas brutas, scan_duration={args.scan_duration}s)...')
     radiomaps_raw = construir_radiomaps(wifi_msgs, odom_msgs, info_mapa, args.scan_duration)
+    if args.bssids:
+        bssids_filtro = {b.upper() for b in args.bssids}
+        radiomaps_raw = {b: v for b, v in radiomaps_raw.items() if b.upper() in bssids_filtro}
     print(f'      {len(radiomaps_raw)} APs encontrados: {list(radiomaps_raw.keys())}')
 
     print('[4/4] Interpolando con RBF thin-plate-spline...')
