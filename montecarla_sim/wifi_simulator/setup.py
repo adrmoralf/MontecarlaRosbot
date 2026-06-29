@@ -12,8 +12,8 @@ setup(
     ],
     install_requires=['setuptools'],
     zip_safe=True,
-    maintainer='Adrián',
-    maintainer_email='adrmoralf@gmail.com',
+    maintainer='Adrián Morales',
+    maintainer_email='adrmoralf@users.noreply.github.com',
     description='WiFi simulator for Montecarla experiment',
     license='Apache License 2.0',
     entry_points={

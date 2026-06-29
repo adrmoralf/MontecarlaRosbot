@@ -1,0 +1,112 @@
+# compose.real_experimentos.yaml — Experimentos A/B con el bag Opción A
+# ─────────────────────────────────────────────────────────────────────────────
+# Reproduce el bag opcionA_XXXXXXXX con AMCL real y graba /amcl_pose para ATE.
+#
+# Variables de entorno:
+#   BAG_NAME    — nombre del bag fuente (default: opcionA_20260628_140433)
+#   WIFI_ENABLED — true/false (default: false) → sufijo B o A en el bag resultante
+#   EXP_NAME    — prefijo del bag de salida (default: exp)
+#   PARAMS_FILE — nombre del fichero de parámetros en montecarla_amcl/config/ (default: montecarla_amcl_real_experimentos.yaml)
+#
+# EXPERIMENTO A (baseline — solo laser):
+#   BAG_NAME=opcionA_20260628_140433 WIFI_ENABLED=false \
+#     docker compose -f compose.real_experimentos.yaml up
+#
+# EXPERIMENTO B (WiFi + laser):
+#   BAG_NAME=opcionA_20260628_140433 WIFI_ENABLED=true \
+#     docker compose -f compose.real_experimentos.yaml up
+#
+# COLD START A/B:
+#   EXP_NAME=cold PARAMS_FILE=montecarla_amcl_real_cold_start.yaml \
+#     BAG_NAME=opcionA_20260628_140433 WIFI_ENABLED=false docker compose -f compose.real_experimentos.yaml up
+#
+# KIDNAPPED A/B:
+#   EXP_NAME=kidnap PARAMS_FILE=montecarla_amcl_real_kidnapped.yaml \
+#     BAG_NAME=opcionA_20260628_140433 WIFI_ENABLED=false docker compose -f compose.real_experimentos.yaml up
+#
+# El bag resultante se guarda en ~/real_bags/{EXP_NAME}_{A|B}_YYYYMMDD_HHMMSS/
+# ─────────────────────────────────────────────────────────────────────────────
+
+x-ros-env: &ros_env
+  ROS_DOMAIN_ID: "0"
+  RMW_IMPLEMENTATION: rmw_fastrtps_cpp
+  DDS_CONFIG: DEFAULT
+
+services:
+
+  # AMCL con el mapa de Opción A.
+  # localization_launch.py ya incluye map_server internamente — no hace falta servicio aparte.
+  # wifi_enabled se controla con la variable WIFI_ENABLED del entorno.
+  montecarla-amcl:
+    build:
+      context: ..
+      dockerfile: montecarla_amcl/Dockerfile
+    network_mode: host
+    ipc: host
+    volumes:
+      - ./maps:/maps:ro
+      - ../montecarla_amcl/config/${PARAMS_FILE:-montecarla_amcl_real_experimentos.yaml}:/params.yaml:ro
+    environment:
+      <<: *ros_env
+      WIFI_ENABLED: "${WIFI_ENABLED:-false}"
+    command: bash -c "
+      source /opt/ros/humble/setup.bash &&
+      source /ros2_ws/install/setup.bash &&
+      ros2 launch montecarla_amcl localization_launch.py
+        params_file:=/params.yaml
+        map:=/maps/opcionA_20260628.yaml
+        use_sim_time:=true
+        autostart:=true
+        wifi_enabled:=${WIFI_ENABLED:-false}"
+
+  # Reproduce el bag de Opción A con --clock.
+  # sleep 15: da tiempo al AMCL a estar listo (mapa cargado + partículas inicializadas).
+  bag-player:
+    build:
+      context: ..
+      dockerfile: montecarla_amcl/Dockerfile
+    network_mode: host
+    ipc: host
+    depends_on:
+      - montecarla-amcl
+    volumes:
+      - ~/real_bags:/bags:ro
+    environment:
+      <<: *ros_env
+      GLOBAL_LOC: "${GLOBAL_LOC:-false}"
+    command: bash -c "
+      source /opt/ros/humble/setup.bash &&
+      source /ros2_ws/install/setup.bash &&
+      sleep 15 &&
+      if [ \"$${GLOBAL_LOC:-false}\" = \"true\" ]; then
+        echo '[cold-start] Llamando /reinitialize_global_localization...' &&
+        until ros2 service call /reinitialize_global_localization std_srvs/srv/Empty '{}'; do sleep 1; done &&
+        echo '[cold-start] Localización global inicializada.';
+      fi &&
+      ros2 bag play /bags/${BAG_NAME:-opcionA_20260628_140433} --clock --rate 0.5"
+
+  # Graba /amcl_pose (estimación AMCL en map frame) + /tf para calcular ATE.
+  # El bag se nombra exp_A_* o exp_B_* según WIFI_ENABLED.
+  bag-recorder-exp:
+    build:
+      context: ..
+      dockerfile: montecarla_amcl/Dockerfile
+    network_mode: host
+    ipc: host
+    depends_on:
+      montecarla-amcl:
+        condition: service_started
+    volumes:
+      - ~/real_bags:/bags
+    environment:
+      <<: *ros_env
+      WIFI_ENABLED: "${WIFI_ENABLED:-false}"
+      EXP_NAME: "${EXP_NAME:-exp}"
+    command: bash -c "
+      source /opt/ros/humble/setup.bash &&
+      source /ros2_ws/install/setup.bash &&
+      mkdir -p /bags &&
+      SUFIJO=$$([ \"$${WIFI_ENABLED:-false}\" = \"true\" ] && echo \"B\" || echo \"A\") &&
+      PREFIJO=\"$${EXP_NAME:-exp}\" &&
+      ros2 bag record /amcl_pose /tf /tf_static /particle_cloud
+        -o /bags/$${PREFIJO}_$${SUFIJO}_$$(date +%Y%m%d_%H%M%S)"

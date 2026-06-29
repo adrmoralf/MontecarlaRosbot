@@ -1,0 +1,12 @@
+bssids:
+- AP_REAL_02
+- AP_REAL_03
+- AP_REAL_01
+height: 260
+map_image: opcionA_20260628.pgm
+origin:
+- -0.397
+- -7.09
+- 0.0
+resolution: 0.04
+width: 210

@@ -2,6 +2,14 @@
                            Version 2.0, January 2004
                         http://www.apache.org/licenses/
 
+Copyright (c) 2026 Adrián Morales
+Universidad de Sevilla — Escuela Técnica Superior de Ingeniería
+Trabajo de Fin de Grado — Grado en Ingeniería de las Tecnologías de Telecomunicación
+
+Portions derived from:
+  nav2_amcl (Navigation2 project) — Copyright (c) Intel Corporation, Open Robotics
+  rosbot-demo-wifi-heatmap (Husarion) — Copyright (c) Husarion sp. z o.o.
+
    TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION
 
    1. Definitions.

@@ -156,7 +156,7 @@ services:
   #     --pose-topic /tf \
   #     --mapa docker-compose/maps/opcionA_YYYYMMDD.yaml \
   #     --salida docker-compose/maps/ \
-  #     --bssids 30:1F:48:0F:32:09 62:FF:CE:40:8F:16 D4:B9:2F:32:35:80
+  #     --bssids AP_SURVEY_01 AP_SURVEY_02 AP_SURVEY_03
 
   wifi-scanner-opcionA:
     profiles: ["opcion_a"]

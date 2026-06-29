@@ -386,7 +386,30 @@ def interpolar_radiomap(rm_raw, info_mapa, nan_threshold=1.5):
 
 # ── Guardado ───────────────────────────────────────────────────────────────────
 
-def guardar(radiomaps, info_mapa, ruta_salida):
+def guardar_mascara_trayectoria(poses_map, info_mapa, ruta_salida, radio=0.5):
+    """Guarda radiomap_trayectoria.npy: bool (alto×ancho), True = robot pasó cerca."""
+    res   = info_mapa['resolucion']
+    ox    = info_mapa['origen_x']
+    oy    = info_mapa['origen_y']
+    ancho = info_mapa['ancho']
+    alto  = info_mapa['alto']
+
+    xs = np.array([p[1] for p in poses_map])
+    ys = np.array([p[2] for p in poses_map])
+    pts_traj = np.column_stack([xs, ys])
+
+    cols_q, filas_q = np.meshgrid(np.arange(ancho), np.arange(alto))
+    x_q = cols_q.ravel() * res + ox + res / 2
+    y_q = filas_q.ravel() * res + oy + res / 2
+    pts_q = np.column_stack([x_q, y_q])
+
+    dist, _ = KDTree(pts_traj).query(pts_q)
+    mascara = (dist <= radio).reshape(alto, ancho)
+    np.save(Path(ruta_salida) / 'radiomap_trayectoria.npy', mascara)
+    print(f'  Máscara trayectoria: {int(np.sum(mascara))} celdas (radio={radio}m)')
+
+
+def guardar(radiomaps, info_mapa, ruta_salida, ruta_mapa_yaml=None):
     """Guarda radiomap_<bssid>.npy y radiomap_meta.yaml en ruta_salida."""
     ruta_salida = Path(ruta_salida)
     ruta_salida.mkdir(parents=True, exist_ok=True)
@@ -407,6 +430,11 @@ def guardar(radiomaps, info_mapa, ruta_salida):
         'height':     info_mapa['alto'],
         'bssids':     list(radiomaps.keys()),
     }
+    if ruta_mapa_yaml is not None:
+        with open(ruta_mapa_yaml) as f:
+            mapa_yaml = yaml.safe_load(f)
+        meta['map_image'] = Path(mapa_yaml.get('image', '')).name
+
     with open(ruta_salida / 'radiomap_meta.yaml', 'w') as f:
         yaml.dump(meta, f, default_flow_style=False, allow_unicode=True)
 
@@ -471,7 +499,8 @@ def main():
         radiomaps[bssid] = interpolar_radiomap(rm_raw, info_mapa, nan_threshold=1.5)
 
     print(f'[5/5] Guardando en {args.salida}:')
-    guardar(radiomaps, info_mapa, args.salida)
+    guardar(radiomaps, info_mapa, args.salida, Path(args.mapa))
+    guardar_mascara_trayectoria(odom_msgs, info_mapa, args.salida)
 
     print('¡Hecho!')
 

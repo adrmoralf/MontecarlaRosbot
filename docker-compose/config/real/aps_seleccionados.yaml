@@ -1,0 +1,28 @@
+aps_seleccionados:
+- bssid: AP_SURVEY_01
+  ssid: SSID_SURVEY_01
+  discriminabilidad: 6.51
+  max_dif_dbm: 8.5
+  std_medio_dbm: 1.2
+  n_muestras: 79
+  rssi_medio_por_zona:
+    pasillo: -85.0
+    salon: -93.5
+- bssid: AP_SURVEY_02
+  ssid: SSID_SURVEY_02_HIDDEN
+  discriminabilidad: 5.16
+  max_dif_dbm: 12.3
+  std_medio_dbm: 2.3
+  n_muestras: 39
+  rssi_medio_por_zona:
+    pasillo: -86.0
+    salon: -98.3
+- bssid: AP_SURVEY_03
+  ssid: SSID_SURVEY_03
+  discriminabilidad: 5.16
+  max_dif_dbm: 12.3
+  std_medio_dbm: 2.3
+  n_muestras: 39
+  rssi_medio_por_zona:
+    pasillo: -86.0
+    salon: -98.3

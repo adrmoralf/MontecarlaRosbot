@@ -1,5 +1,46 @@
+# ── Credenciales y datos privados ─────────────────────────────────────────────
 .env
-sample-images
+*.env.local
+
+# ── Radiomaps y metadatos reales (BSSIDs sensibles — usar *.yaml.example) ─────
+docker-compose/maps/radiomap_[0-9A-Fa-f][0-9A-Fa-f]_*.npy
+docker-compose/maps/radiomap_meta.yaml
+docker-compose/maps/radiomap_trayectoria.npy
+
+# ── Mapas del entorno real (planta de la vivienda) ────────────────────────────
+docker-compose/maps/casa_real.pgm
+docker-compose/maps/casa_real.yaml
+docker-compose/maps/opcionA_*.pgm
+docker-compose/maps/opcionA_*.yaml
+
+# ── Archivos de resultados experimentales (generados, no versionables) ─────────
+ate_resultado.txt
+cold_start_resultado.txt
+kidnapped_resultado.txt
+*_resultado.txt
+
+# ── ROS 2 build artifacts ──────────────────────────────────────────────────────
+build/
+install/
+log/
+*.log
+
+# ── Python ────────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+
+# ── IDE y notas privadas ───────────────────────────────────────────────────────
+notas/
+.vscode/
+*.swp
+*.swo
+.idea/
+
+# ── Documentación TFG (contiene IPs y datos de red del entorno real) ──────────
 *.md
 !README.md
-notas/
+
+# ── Imágenes de muestras (demo original Husarion) ─────────────────────────────
+sample-images

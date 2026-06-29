@@ -11,10 +11,14 @@
             "id": "01d0e4195023b7a5",
             "type": "leaf",
             "state": {
-              "type": "graph",
-              "state": {},
-              "icon": "lucide-git-fork",
-              "title": "Graph view"
+              "type": "markdown",
+              "state": {
+                "file": "tutoria.md",
+                "mode": "preview",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "tutoria"
             }
           }
         ]
@@ -173,6 +177,18 @@
   },
   "active": "01d0e4195023b7a5",
   "lastOpenFiles": [
+    "tutoria.md.tmp.4843.2d01f3d64d24",
+    "assets/MapaCasa.jpeg",
+    "tutoria.md.tmp.4843.b7b328ecd3ed",
+    "assets/radiomaps_visualizacion.png",
+    "assets/ate_mapa_calor.png",
+    "assets/ate_por_zona.png",
+    "assets/ate_distribucion.png",
+    "assets/ate_temporal.png",
+    "assets",
+    "Home.md.tmp.4843.31496130b6d6",
+    "tutoria.md",
+    "tutoria.md.tmp.4843.2c4caa8a6fce",
     "Memoria/Cap6_Conclusiones.md.tmp.4939.88a4fd60c6ff",
     "Memoria/Cap5_Simulacion_Resultados.md.tmp.4939.b6380331e4f6",
     "Memoria/Cap4_Desarrollo.md.tmp.4939.452015127b2b",

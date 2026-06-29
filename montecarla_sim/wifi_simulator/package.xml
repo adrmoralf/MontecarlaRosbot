@@ -4,7 +4,7 @@
   <name>wifi_simulator</name>
   <version>0.1.0</version>
   <description>Simula medidas WiFi con modelo path-loss + NLOS para experimento Montecarla</description>
-  <maintainer email="adrmoralf@gmail.com">Adrián</maintainer>
+  <maintainer email="adrmoralf@users.noreply.github.com">Adrián Morales</maintainer>
   <license>Apache License 2.0</license>
 
   <exec_depend>rclpy</exec_depend>

@@ -3,7 +3,7 @@
   <name>wifi_scanner</name>
   <version>0.1.0</version>
   <description>Nodo ROS 2 que publica WifiScan desde wlan0 real usando iw scan dump</description>
-  <maintainer email="adrmoralf@gmail.com">Adrian</maintainer>
+  <maintainer email="adrmoralf@users.noreply.github.com">Adrián Morales</maintainer>
   <license>Apache-2.0</license>
   <depend>rclpy</depend>
   <depend>montecarla_msgs</depend>

@@ -19,7 +19,7 @@ from rclpy.serialization import deserialize_message
 from rosidl_runtime_py.utilities import get_message
 
 
-def _zona(x_gt: float) -> str:
+def _zona_sim(x_gt: float) -> str:
     if x_gt > 1.5:
         return 'salon'
     if x_gt < -0.5:
@@ -27,11 +27,18 @@ def _zona(x_gt: float) -> str:
     return 'pasillo'
 
 
+def _zona_real(x_gt: float) -> str:
+    return 'habitaciones' if x_gt > 1.5 else 'pasillo'
+
+
 def _tiempo_convergencia(parejas, umbral: float = 1.0) -> str:
-    """Devuelve el tiempo sim en que el error cae por primera vez por debajo de umbral."""
+    """Devuelve el tiempo relativo al inicio en que el error cae por primera vez bajo umbral."""
+    if not parejas:
+        return 'nunca'
+    t0 = parejas[0][0]
     for t, _xe, _ye, _xg, _yg, err in parejas:
         if err < umbral:
-            return f't={t/1e9:.1f}s'
+            return f'{(t - t0)/1e9:.1f}s desde inicio'
     return 'nunca'
 
 
@@ -94,86 +101,108 @@ def ate_rmse(gt, estimado, ventana_ns=2_000_000_000):
 
 # ── Main ──────────────────────────────────────────────────────────────────────
 
+def _por_zona(parejas, fn_zona):
+    zonas = {}
+    for _, _, _, xg, _, e in parejas:
+        z = fn_zona(xg)
+        zonas.setdefault(z, []).append(e)
+    return {z: (float(np.sqrt(np.mean(np.array(v)**2))), len(v)) for z, v in zonas.items()}
+
+
 def main():
     parser = argparse.ArgumentParser(
         description='Calcula ATE RMSE comparando dos experimentos AMCL contra ground truth'
     )
-    parser.add_argument('--gt',   required=True, help='Bag original (tiene /odometry/filtered)')
-    parser.add_argument('--base', required=True, help='Replay sin WiFi (tiene /amcl_pose)')
-    parser.add_argument('--wifi', required=True, help='Replay con WiFi (tiene /amcl_pose)')
+    parser.add_argument('--gt',     required=True, help='Bag original (tiene /odometry/filtered)')
+    parser.add_argument('--base',   required=True, help='Replay sin WiFi (tiene /amcl_pose)')
+    parser.add_argument('--wifi',   required=True, help='Replay con WiFi (tiene /amcl_pose)')
+    parser.add_argument('--salida', default='ate_resultado.txt',
+                        help='Fichero donde guardar el resultado completo (por defecto ate_resultado.txt)')
+    parser.add_argument('--real', action='store_true',
+                        help='Usar zonas del entorno real (pasillo/habitaciones) en vez de simulación')
     args = parser.parse_args()
 
-    print('[1/4] Leyendo ground truth (/odometry/filtered)...')
+    ruta_salida = Path(args.salida)
+
+    lineas = []
+
+    def p(txt=''):
+        print(txt)
+        lineas.append(txt)
+
+    p('[1/4] Leyendo ground truth (/odometry/filtered)...')
     gt = leer_poses(args.gt, '/odometry/filtered')
-    print(f'       {len(gt)} poses GT')
+    p(f'       {len(gt)} poses GT')
     if not gt:
-        print('ERROR: no hay ground truth, comprueba la ruta del bag original')
+        p('ERROR: no hay ground truth, comprueba la ruta del bag original')
         return
 
-    # ── debug: rango de stamps GT ──────────────────────────────────────────
     gt_t0 = gt[0][0] / 1e9
     gt_t1 = gt[-1][0] / 1e9
-    print(f'       rango sim-time GT: [{gt_t0:.1f}, {gt_t1:.1f}] s')
+    p(f'       rango sim-time GT: [{gt_t0:.1f}, {gt_t1:.1f}] s')
 
-    print('[2/4] Leyendo Experimento A — baseline (/amcl_pose)...')
+    p('[2/4] Leyendo Experimento A — baseline (/amcl_pose)...')
     base = leer_poses(args.base, '/amcl_pose')
-    print(f'       {len(base)} poses estimadas')
+    p(f'       {len(base)} poses estimadas')
     if base:
-        base_t0 = base[0][0] / 1e9
-        base_t1 = base[-1][0] / 1e9
-        print(f'       rango sim-time A:  [{base_t0:.1f}, {base_t1:.1f}] s')
+        p(f'       rango sim-time A:  [{base[0][0]/1e9:.1f}, {base[-1][0]/1e9:.1f}] s')
 
-    print('[3/4] Leyendo Experimento B — WiFi (/amcl_pose)...')
+    p('[3/4] Leyendo Experimento B — WiFi (/amcl_pose)...')
     wifi = leer_poses(args.wifi, '/amcl_pose')
-    print(f'       {len(wifi)} poses estimadas')
+    p(f'       {len(wifi)} poses estimadas')
     if wifi:
-        wifi_t0 = wifi[0][0] / 1e9
-        wifi_t1 = wifi[-1][0] / 1e9
-        print(f'       rango sim-time B:  [{wifi_t0:.1f}, {wifi_t1:.1f}] s')
+        p(f'       rango sim-time B:  [{wifi[0][0]/1e9:.1f}, {wifi[-1][0]/1e9:.1f}] s')
 
-    print('[4/4] Calculando ATE RMSE...')
+    fn_zona = _zona_real if args.real else _zona_sim
+
+    p('[4/4] Calculando ATE RMSE...')
     rmse_base, parejas_base = ate_rmse(gt, base)
     rmse_wifi, parejas_wifi = ate_rmse(gt, wifi)
 
-    print()
-    print('══════════════════════════════════════════════════════════════')
-    print('   ATE (Absolute Trajectory Error)  —  RMSE y calidad        ')
-    print('══════════════════════════════════════════════════════════════')
+    p()
+    p('══════════════════════════════════════════════════════════════')
+    p('   ATE (Absolute Trajectory Error)  —  RMSE y calidad        ')
+    p('══════════════════════════════════════════════════════════════')
     for etiqueta, rmse, parejas in [
         ('A — AMCL puro', rmse_base, parejas_base),
         ('B — AMCL+WiFi', rmse_wifi, parejas_wifi),
     ]:
         if rmse is None:
-            print(f'  {etiqueta}: sin datos')
+            p(f'  {etiqueta}: sin datos')
             continue
-        errs = np.array([p[5] for p in parejas])
+        errs = np.array([pr[5] for pr in parejas])
         t_conv = _tiempo_convergencia(parejas, umbral=1.0)
-        print(f'  {etiqueta}: RMSE={rmse:.3f} m  max={errs.max():.3f} m  n={len(errs)}')
-        print(f'    <1.0 m: {(errs<1.0).mean()*100:.0f}%   '
-              f'<0.5 m: {(errs<0.5).mean()*100:.0f}%   '
-              f'convergencia (err<1m): {t_conv}')
-        print()
+        p(f'  {etiqueta}: RMSE={rmse:.3f} m  max={errs.max():.3f} m  n={len(errs)}')
+        p(f'    <1.0 m: {(errs<1.0).mean()*100:.0f}%   '
+          f'<0.5 m: {(errs<0.5).mean()*100:.0f}%   '
+          f'convergencia (err<1m): {t_conv}')
+        for z, (rz, nz) in sorted(_por_zona(parejas, fn_zona).items()):
+            p(f'    zona {z:<14}: RMSE={rz:.3f} m  n={nz}')
+        p()
 
     if rmse_base is not None and rmse_wifi is not None:
         mejora = (rmse_base - rmse_wifi) / rmse_base * 100
         signo = '↓ mejora' if mejora > 0 else '↑ empeora'
-        print(f'  Diferencia RMSE: {mejora:+.1f}%  ({signo})')
-    print('══════════════════════════════════════════════════════════════')
+        p(f'  Diferencia RMSE: {mejora:+.1f}%  ({signo})')
+    p('══════════════════════════════════════════════════════════════')
 
-    # ── tabla detallada de errores por pareja ──────────────────────────────
+    # ── tabla detallada (solo al fichero, para no saturar terminal) ────────
     if parejas_base:
-        print('\nDetalle A (baseline):')
-        print('  t_sim(s)   x_est    y_est    x_gt     y_gt    err(m)  zona')
+        lineas.append('\nDetalle A (baseline):')
+        lineas.append('  t_sim(s)   x_est    y_est    x_gt     y_gt    err(m)  zona')
         for t, xe, ye, xg, yg, e in parejas_base:
-            print(f'  {t/1e9:8.1f}  {xe:7.3f}  {ye:7.3f}  {xg:7.3f}  {yg:7.3f}'
-                  f'  {e:.3f}  {_zona(xg)}')
+            lineas.append(f'  {t/1e9:8.1f}  {xe:7.3f}  {ye:7.3f}  {xg:7.3f}  {yg:7.3f}'
+                          f'  {e:.3f}  {fn_zona(xg)}')
 
     if parejas_wifi:
-        print('\nDetalle B (WiFi):')
-        print('  t_sim(s)   x_est    y_est    x_gt     y_gt    err(m)  zona')
+        lineas.append('\nDetalle B (WiFi):')
+        lineas.append('  t_sim(s)   x_est    y_est    x_gt     y_gt    err(m)  zona')
         for t, xe, ye, xg, yg, e in parejas_wifi:
-            print(f'  {t/1e9:8.1f}  {xe:7.3f}  {ye:7.3f}  {xg:7.3f}  {yg:7.3f}'
-                  f'  {e:.3f}  {_zona(xg)}')
+            lineas.append(f'  {t/1e9:8.1f}  {xe:7.3f}  {ye:7.3f}  {xg:7.3f}  {yg:7.3f}'
+                          f'  {e:.3f}  {fn_zona(xg)}')
+
+    ruta_salida.write_text('\n'.join(lineas) + '\n')
+    print(f'\n[OK] Resultado guardado en: {ruta_salida.resolve()}')
 
 
 if __name__ == '__main__':
