@@ -156,11 +156,11 @@ El radiomap resultante muestra el gradiente de señal de cada AP sobre el mapa S
 
 ### Experimento base — condiciones normales
 
-El robot arranca en la posición correcta y recorre el entorno normalmente. Ambos modos convergen desde el inicio; la mejora del WiFi es marginal en este escenario.
+El robot arranca en la posición correcta y recorre el entorno normalmente. Con buena pose inicial el láser ya basta: es la cota inferior del aporte WiFi, que no interviene ni molesta.
 
 | | AMCL puro | AMCL + WiFi | Mejora |
 |---|:---:|:---:|:---:|
-| **RMSE** | 0.461 m | 0.453 m | +1.6% |
+| **RMSE** | 0.233 m | 0.238 m | −2.1% |
 | % poses < 1 m | 100% | 100% | — |
 
 | AMCL puro (A) | AMCL + WiFi (B) |
@@ -171,14 +171,25 @@ El robot arranca en la posición correcta y recorre el entorno normalmente. Ambo
 
 ---
 
-### Experimento kidnapped — robot desplazado
+### Experimento cold start — sin pose inicial
 
-El robot arranca convencido de estar en una posición incorrecta (4.0, −3.0). Sin WiFi, el AMCL **nunca** recupera la localización correcta porque el LiDAR no puede distinguir en qué habitación está. Con WiFi, converge en ~135 segundos.
+El robot arranca sin pose inicial: las partículas se reparten por todo el mapa. Partiendo de incertidumbre total, el WiFi descarta antes las hipótesis incorrectas, converge más rápido y de forma más estable.
 
 | | AMCL puro | AMCL + WiFi | Mejora |
 |---|:---:|:---:|:---:|
-| **RMSE** | 4.854 m | 2.698 m | **+44.4%** |
-| Convergencia (err < 1 m) | Nunca | ~135 s | — |
+| **RMSE** | 0.666 m | 0.581 m | **+12.8%** |
+| Convergencia (err < 1 m) | 11.8 s | 8.8 s | −3.0 s |
+
+---
+
+### Experimento kidnapped — robot desplazado
+
+El robot arranca convencido de estar en una posición incorrecta (4.0, −3.0). Sin WiFi, el AMCL **nunca** recupera la localización correcta porque el LiDAR no puede distinguir en qué habitación está. Con WiFi, relocaliza y ya no vuelve a perderse.
+
+| | AMCL puro | AMCL + WiFi | Mejora |
+|---|:---:|:---:|:---:|
+| **RMSE** | 4.934 m | 2.678 m | **+45.7%** |
+| % poses < 1 m | 0% | 40% | +40 pp |
 
 | AMCL puro — nunca converge (A) | AMCL + WiFi — converge ~135 s (B) |
 |:---:|:---:|
@@ -193,7 +204,7 @@ Casa simulada con dormitorio y cocina de geometría idéntica. Escenario diseña
 | | AMCL puro | AMCL + WiFi | Mejora |
 |---|:---:|:---:|:---:|
 | **RMSE** | 2.772 m | 1.271 m | **+54.2%** |
-| % poses < 1 m | 29% | 71% | +42 pp |
+| % poses < 1 m | 40% | 71% | +31 pp |
 
 Parámetros finales: `wifi_sigma=5.0 dBm`, `wifi_alpha=0.9`, `max_particles=8000`.
 
