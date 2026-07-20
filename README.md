@@ -1,4 +1,4 @@
-# "Método Montecarla": Paquete de ROS2 para localización precisa en presencia de redes WiFi con ROSbot 2R
+# "Montecarla": Paquete de ROS2 para localización precisa en presencia de redes WiFi con ROSbot 2R
 
 **TFG · Grado en Ingeniería Electrónica, Robótica y Mecatrónica · Universidad de Sevilla · 2026**  
 Autor: Adrián Morales Alfonso &nbsp;|&nbsp; Tutor: David Alejo
@@ -165,7 +165,7 @@ El robot arranca en la posición correcta y recorre el entorno normalmente. Con 
 
 | AMCL puro (A) | AMCL + WiFi (B) |
 |:---:|:---:|
-| ![Base A](docs/images/base_A.png) | ![Base B](docs/images/base_B.png) |
+| ![Base A](docs/images/base_A2.png) | ![Base B](docs/images/base_B2.png) |
 
 *Puntos = poses estimadas por AMCL, coloreadas por error (azul=bajo, rojo=alto). Línea verde discontinua = trayectoria real (ground truth).*
 
@@ -193,7 +193,7 @@ El robot arranca convencido de estar en una posición incorrecta (4.0, −3.0). 
 
 | AMCL puro — nunca converge (A) | AMCL + WiFi — converge ~135 s (B) |
 |:---:|:---:|
-| ![Kidnapped A](docs/images/kidnapped_A.png) | ![Kidnapped B](docs/images/kidnapped_B.png) |
+| ![Kidnapped A](docs/images/kidnapped_A2.png) | ![Kidnapped B](docs/images/kidnapped_B2.png) |
 
 ---
 
