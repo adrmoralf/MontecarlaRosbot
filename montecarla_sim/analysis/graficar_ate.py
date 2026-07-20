@@ -307,7 +307,11 @@ def graficar(datos_A, datos_B, salida_dir, modo_real=False, ruta_mapa=None, gt_r
         fig, ax = plt.subplots(figsize=(7, 8))
 
         if mapa_img is not None:
-            ax.imshow(mapa_img, extent=mapa_extent, cmap='gray', origin='upper',
+            # Desplazar el mapa de fondo 0,5 m hacia abajo (-Y) para alinearlo con la GT
+            dy_mapa = -0.5
+            extent_mapa = [mapa_extent[0], mapa_extent[1],
+                           mapa_extent[2] + dy_mapa, mapa_extent[3] + dy_mapa]
+            ax.imshow(mapa_img, extent=extent_mapa, cmap='gray', origin='upper',
                       alpha=0.55, zorder=0)
 
         # Scatter: posición estimada por AMCL, coloreada por error

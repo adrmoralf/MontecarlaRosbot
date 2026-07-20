@@ -1,3 +1,29 @@
 {
-    "claudeCode.allowDangerouslySkipPermissions": true
+    "claudeCode.allowDangerouslySkipPermissions": true,
+
+    "//": "LaTeX Workshop compila la memoria con TeX Live dentro de Docker (sin instalar TeX en Windows). Requiere Docker Desktop arrancado.",
+    "latex-workshop.latex.tools": [
+        {
+            "name": "docker-latexmk",
+            "command": "docker",
+            "args": [
+                "run", "--rm",
+                "-v", "%DIR%:/work",
+                "-w", "/work",
+                "texlive/texlive:latest",
+                "latexmk", "-pdf", "-f", "-interaction=nonstopmode", "-synctex=1", "-file-line-error", "%DOCFILE%"
+            ],
+            "env": {}
+        }
+    ],
+    "latex-workshop.latex.recipes": [
+        {
+            "name": "Docker latexmk (pdflatex)",
+            "tools": ["docker-latexmk"]
+        }
+    ],
+    "latex-workshop.latex.recipe.default": "Docker latexmk (pdflatex)",
+    "latex-workshop.latex.outDir": "%DIR%",
+    "latex-workshop.latex.autoBuild.run": "never",
+    "latex-workshop.view.pdf.viewer": "tab"
 }
