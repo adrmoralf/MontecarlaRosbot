@@ -41,6 +41,9 @@ notas/
 # ── Documentación TFG (contiene IPs y datos de red del entorno real) ──────────
 *.md
 !README.md
+TFG Memoria/
+TFG docs/
+memoria_overleaf.zip
 
 # ── Imágenes de muestras (demo original Husarion) ─────────────────────────────
 sample-images
